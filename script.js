@@ -1,4 +1,4 @@
-// --- 게임 데이터 및 설정 ---
+// --- 게임 데이터 설정 ---
 const STAGES = [
     { stage: 1, days: 15, target: 30000 },
     { stage: 2, days: 35, target: 100000 },
@@ -22,7 +22,6 @@ const NEWS_POOL = [
     { title: "💬 횡보 장세 지속... 특별한 모멘텀 없이 눈치보기 극심", effect: "calm", intensity: 0.3, duration: 5 },
 ];
 
-// --- 게임 상태 변수 ---
 let gameState = null;
 let currentTF = 'daily';
 let showInd = { ma: true, bb: false, ichimoku: false, vol: false, macd: false, stoch: false, rsi: false, cci: false, adx: false };
@@ -30,524 +29,304 @@ let currentRange = null;
 let currentDragMode = 'pan';
 let selectedLev = 1;
 
-// --- 지표 계산 함수 (JavaScript 이식) ---
-function getSMA(prices, n) {
-    if (prices.length < n) return new Array(prices.length).fill(0);
-    let sma = new Array(n - 1).fill(0);
-    for (let i = n - 1; i < prices.length; i++) {
-        let sum = 0;
-        for (let j = 0; j < n; j++) sum += prices[i - j];
-        sma.push(sum / n);
-    }
-    return sma;
-}
+// --- 지표 계산 함수 ---
+function getSMA(p, n) { if (p.length < n) return new Array(p.length).fill(null); let r = new Array(n - 1).fill(null); for (let i = n - 1; i < p.length; i++) { let s = 0; for (let j = 0; j < n; j++) s += p[i - j]; r.push(s / n); } return r; }
+function getEMA(p, n) { if (p.length === 0) return []; let r = [p[0]], a = 2 / (n + 1); for (let i = 1; i < p.length; i++) r.push(p[i] * a + r[r.length - 1] * (1 - a)); return r; }
+function getRSI(p, n = 14) { if (p.length < n + 1) return new Array(p.length).fill(50); let d = []; for (let i = 0; i < p.length - 1; i++) d.push(p[i + 1] - p[i]); let u = d.map(v => v > 0 ? v : 0), l = d.map(v => v < 0 ? -v : 0); let ag = u.slice(0, n).reduce((a, b) => a + b, 0) / n, al = l.slice(0, n).reduce((a, b) => a + b, 0) / n; let r = new Array(n + 1).fill(50); for (let i = n; i < d.length; i++) { ag = (ag * (n - 1) + u[i]) / n; al = (al * (n - 1) + l[i]) / n; r.push(al === 0 ? 100 : 100 - (100 / (1 + ag / al))); } return r; }
+function getBollinger(p, n = 20, k = 2) { let sma = getSMA(p, n); let u = [], l = []; for (let i = 0; i < p.length; i++) { if (sma[i] === null) { u.push(null); l.push(null); continue; } let slice = p.slice(Math.max(0, i - n + 1), i + 1); let std = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - sma[i], 2), 0) / n); u.push(sma[i] + k * std); l.push(sma[i] - k * std); } return { u, l }; }
+function getMACD(p, f = 12, s = 26, sig = 9) { let emaF = getEMA(p, f), emaS = getEMA(p, s); let macd = emaF.map((v, i) => v - emaS[i]); let signal = getEMA(macd, sig); return { macd, signal }; }
+function getStoch(h, l, c, n = 14, k = 3, d = 3) { let pk = []; for (let i = 0; i < c.length; i++) { if (i < n - 1) { pk.push(50); continue; } let hh = Math.max(...h.slice(i - n + 1, i + 1)), ll = Math.min(...l.slice(i - n + 1, i + 1)); pk.push(hh === ll ? 50 : (c[i] - ll) / (hh - ll) * 100); } let sk = getSMA(pk, k), sd = getSMA(sk.map(v => v === null ? 50 : v), d); return { sk, sd }; }
+function getIchimoku(h, l) { function mid(hh, ll, n) { let r = []; for (let i = 0; i < hh.length; i++) { if (i < n - 1) r.push(hh[i]); else r.push((Math.max(...hh.slice(i - n + 1, i + 1)) + Math.min(...ll.slice(i - n + 1, i + 1))) / 2); } return r; } let t = mid(h, l, 9), k = mid(h, l, 26); return { t, k }; }
+function getADX(h, l, c, n = 14) { let tr = [], pdm = [], mdm = []; for (let i = 1; i < c.length; i++) { tr.push(Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]))); let up = h[i] - h[i - 1], dn = l[i - 1] - l[i]; pdm.push(up > dn && up > 0 ? up : 0); mdm.push(dn > up && dn > 0 ? dn : 0); } let trE = getEMA(tr, n), pdE = getEMA(pdm, n), mdE = getEMA(mdm, n); let pdi = [0].concat(pdE.map((v, i) => trE[i] ? v / trE[i] * 100 : 0)), mdi = [0].concat(mdE.map((v, i) => trE[i] ? v / trE[i] * 100 : 0)); let dx = pdi.map((v, i) => (v + mdi[i]) ? Math.abs(v - mdi[i]) / (v + mdi[i]) * 100 : 0); return getEMA(dx, n); }
+function getCCI(h, l, c, n = 14) { let tp = c.map((v, i) => (h[i] + l[i] + v) / 3); let sma = getSMA(tp, n); let r = []; for (let i = 0; i < tp.length; i++) { if (sma[i] === null) { r.push(0); continue; } let slice = tp.slice(Math.max(0, i - n + 1), i + 1); let mad = slice.reduce((a, b) => a + Math.abs(b - sma[i]), 0) / n; r.push(mad === 0 ? 0 : (tp[i] - sma[i]) / (0.015 * mad)); } return r; }
 
-function getEMA(prices, n) {
-    if (prices.length === 0) return [];
-    let ema = [prices[0]];
-    let alpha = 2 / (n + 1);
-    for (let i = 1; i < prices.length; i++) {
-        ema.push(prices[i] * alpha + ema[ema.length - 1] * (1 - alpha));
-    }
-    return ema;
-}
-
-function getRSI(prices, period = 14) {
-    if (prices.length < period + 1) return new Array(prices.length).fill(50.0);
-    let deltas = [];
-    for (let i = 0; i < prices.length - 1; i++) deltas.push(prices[i + 1] - prices[i]);
-    let up = deltas.map(d => d > 0 ? d : 0);
-    let down = deltas.map(d => d < 0 ? -d : 0);
-    
-    let avgGain = up.slice(0, period).reduce((a, b) => a + b, 0) / period;
-    let avgLoss = down.slice(0, period).reduce((a, b) => a + b, 0) / period;
-    
-    let rsi = new Array(period + 1).fill(50.0);
-    for (let i = period; i < deltas.length; i++) {
-        avgGain = (avgGain * (period - 1) + up[i]) / period;
-        avgLoss = (avgLoss * (period - 1) + down[i]) / period;
-        let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-        rsi.push(100 - (100 / (1 + rs)));
-    }
-    return rsi;
-}
-
-function getBollinger(prices, n = 20, k = 1.5) {
-    let sma = getSMA(prices, n);
-    let upper = [], lower = [];
-    for (let i = 0; i < prices.length; i++) {
-        if (i < n - 1) {
-            upper.push(null); lower.push(null);
-            continue;
-        }
-        let slice = prices.slice(i - n + 1, i + 1);
-        let avg = sma[i];
-        let std = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / n);
-        upper.push(avg + k * std);
-        lower.push(avg - k * std);
-    }
-    return { upper, lower };
-}
-
-function getMACD(prices, fast = 12, slow = 26, signal = 9) {
-    let ef = getEMA(prices, fast);
-    let es = getEMA(prices, slow);
-    let macd = ef.map((f, i) => f - es[i]);
-    let sig = getEMA(macd, signal);
-    return { macd, sig };
-}
-
-function getStochastic(highs, lows, closes, n = 14, k = 3, d = 3) {
-    let pk = [];
-    for (let i = 0; i < closes.length; i++) {
-        if (i < n - 1) {
-            pk.push(50.0);
-            continue;
-        }
-        let hh = Math.max(...highs.slice(i - n + 1, i + 1));
-        let ll = Math.min(...lows.slice(i - n + 1, i + 1));
-        pk.push(hh === ll ? 50.0 : ((closes[i] - ll) / (hh - ll) * 100));
-    }
-    let sk = getSMA(pk, k);
-    let sd = getSMA(sk, d);
-    return { sk, sd };
-}
-
-function getIchimoku(highs, lows) {
-    function mid(h, l, n) {
-        let res = [];
-        for (let i = 0; i < h.length; i++) {
-            if (i < n - 1) res.push(h[i]);
-            else {
-                let hh = Math.max(...h.slice(i - n + 1, i + 1));
-                let ll = Math.min(...l.slice(i - n + 1, i + 1));
-                res.push((hh + ll) / 2);
-            }
-        }
-        return res;
-    }
-    let ten = mid(highs, lows, 9);
-    let kij = mid(highs, lows, 26);
-    let sa = new Array(26).fill(null).concat(ten.map((t, i) => (t + kij[i]) / 2));
-    let sb = new Array(26).fill(null).concat(mid(highs, lows, 52));
-    return { ten, kij, sa: sa.slice(0, highs.length), sb: sb.slice(0, highs.length) };
-}
-
-function getADX(highs, lows, closes, n = 14) {
-    let tr = [], pdm = [], mdm = [];
-    for (let i = 1; i < closes.length; i++) {
-        tr.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
-        let up = highs[i] - highs[i - 1];
-        let down = lows[i - 1] - lows[i];
-        pdm.push(up > down && up > 0 ? up : 0);
-        mdm.push(down > up && down > 0 ? down : 0);
-    }
-    let st = getEMA(tr, n), sp = getEMA(pdm, n), sm = getEMA(mdm, n);
-    let pdi = [0.0].concat(sp.map((p, i) => st[i] ? (p / st[i]) * 100 : 0));
-    let mdi = [0.0].concat(sm.map((m, i) => st[i] ? (m / st[i]) * 100 : 0));
-    let dx = pdi.map((p, i) => (p + mdi[i]) ? Math.abs(p - mdi[i]) / (p + mdi[i]) * 100 : 0);
-    let adx = getEMA(dx, n);
-    return { pdi, mdi, adx };
-}
-
-function getCCI(highs, lows, closes, n = 14) {
-    let tp = highs.map((h, i) => (h + lows[i] + closes[i]) / 3);
-    let smaTP = getSMA(tp, n);
-    let cci = [];
-    for (let i = 0; i < tp.length; i++) {
-        if (i < n - 1) { cci.push(0.0); continue; }
-        let slice = tp.slice(i - n + 1, i + 1);
-        let avgDev = slice.reduce((a, b) => a + Math.abs(b - smaTP[i]), 0) / n;
-        cci.push(avgDev === 0 ? 0 : (tp[i] - smaTP[i]) / (0.015 * avgDev));
-    }
-    return cci;
-}
-
-// --- 게임 엔진 로직 ---
+// --- 게임 엔진 ---
 function generateInitialState() {
-    let state = {
-        day: 1, money: 10000, initial_seed: 10000,
-        shares: 0, avg_price: 0, debt: 0,
-        inv_shares: 0, inv_avg_price: 0, inv_debt: 0,
-        total_asset: 10000, history: [], trade_marks: [],
-        liquidated: false, current_stage_idx: 0,
-        game_over: false, game_clear: false, stage_cleared_flag: false,
-        active_news: null, news_remaining: 0, news_history: [],
-        new_news_flag: false, skill_points: 0,
-        skills: { insight: 0, risk: 0, credit: 0 }
+    let s = {
+        day: 1, money: 10000, initial_seed: 10000, shares: 0, avg_price: 0, debt: 0,
+        inv_shares: 0, inv_avg_price: 0, inv_debt: 0, total_asset: 10000, history: [],
+        liquidated: false, current_stage_idx: 0, game_over: false, game_clear: false,
+        active_news: null, news_remaining: 0, news_history: [], 
+        skill_points: 0, skills: { insight: 0, risk: 0, credit: 0 }
     };
-    let price = Math.floor(Math.random() * (400 - 150 + 1)) + 150;
-    for (let i = -1000; i <= 0; i++) {
-        let o = price;
-        let c = Math.max(10, o + (Math.floor(Math.random() * 31) - 15));
-        let h = Math.max(o, c) + Math.floor(Math.random() * 11);
-        let l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 11));
-        state.history.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1901) + 100 });
+    let price = Math.floor(Math.random() * 250) + 150;
+    for (let i = -7500; i <= 0; i++) {
+        let o = price, c = Math.max(10, o + (Math.floor(Math.random() * 31) - 15));
+        let h = Math.max(o, c) + Math.floor(Math.random() * 11), l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 11));
+        s.history.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1000) + 500 });
         price = c;
     }
-    state.price = price;
-    return state;
+    s.price = price; return s;
 }
 
 function calculateTotalAsset() {
+    if (!gameState) return 0;
     let p = gameState.price;
     let longV = (gameState.shares * p) - gameState.debt;
     let invV = gameState.inv_shares > 0 ? (gameState.inv_shares * (2 * gameState.inv_avg_price - p)) - gameState.inv_debt : 0;
     return gameState.money + longV + invV;
 }
 
-// --- UI 제어 및 인터랙션 ---
-function setLev(val, btn) {
-    selectedLev = val;
-    document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+// --- 오버레이 & 스킬 제어 ---
+function closeNewsOverlay() { document.getElementById('news-msg').style.display = 'none'; }
+function showSkillMenu() {
+    document.getElementById('stageclear-msg').style.display = 'none';
+    document.getElementById('skill-msg').style.display = 'flex';
+    updateSkillUI();
 }
-
-function setDragMode(mode) {
-    currentDragMode = mode;
-    Plotly.relayout('chart', { dragmode: mode });
-    document.getElementById('btn-pan').style.background = (mode === 'pan') ? '#2980b9' : '#7f8c8d';
-    document.getElementById('btn-draw').style.background = (mode === 'drawline') ? '#e74c3c' : '#7f8c8d';
+function upgradeSkill(type) {
+    if (gameState.skill_points > 0) {
+        gameState.skills[type]++;
+        gameState.skill_points--;
+        updateSkillUI();
+    } else { alert("스킬 포인트가 부족합니다."); }
 }
-
-function toggleInd(name, btn) {
-    showInd[name] = !showInd[name];
-    btn.classList.toggle('on');
-    updateAndDraw();
-}
-
-function changeTF(tf) {
-    currentTF = tf;
-    currentRange = null;
-    document.querySelectorAll('.btn-tf').forEach(b => b.classList.remove('active'));
-    document.getElementById(tf).classList.add('active');
-    updateAndDraw();
-}
-
-function resetGame() {
-    if (confirm("초기화하시겠습니까?")) {
-        gameState = generateInitialState();
-        currentRange = null;
-        updateAndDraw();
-    }
-}
-
-function undoLastShape() {
-    const c = document.getElementById('chart');
-    if (c.layout && c.layout.shapes) {
-        const userShapes = c.layout.shapes.filter(s => s.xref !== 'paper');
-        if (userShapes.length > 0) {
-            const lastUserShape = userShapes[userShapes.length - 1];
-            const newShapes = c.layout.shapes.filter(s => s !== lastUserShape);
-            Plotly.relayout('chart', { shapes: newShapes });
-        }
-    }
-}
-
-function clearShapes() {
-    const c = document.getElementById('chart');
-    if (c.layout && c.layout.shapes) {
-        const systemShapes = c.layout.shapes.filter(s => s.xref === 'paper');
-        Plotly.relayout('chart', { shapes: systemShapes });
-    }
-}
-
-function trade(act) {
-    const amt = parseInt(document.getElementById('trade-amount').value);
-    if (isNaN(amt) || amt <= 0) { alert("수량 입력"); return; }
+function updateSkillUI() {
+    document.getElementById('skill-points-val').innerText = gameState.skill_points;
+    document.getElementById('skill-insight-lv').innerText = gameState.skills.insight;
+    document.getElementById('skill-risk-lv').innerText = gameState.skills.risk;
+    document.getElementById('skill-credit-lv').innerText = gameState.skills.credit;
     
-    let success = false, message = "";
-    const p = gameState.price;
-
-    if (act === 'buy') {
-        let cost = p * amt; let req = cost / selectedLev;
-        if (gameState.money >= req) {
-            gameState.money -= req; gameState.debt += (cost - req);
-            gameState.avg_price = (gameState.shares * gameState.avg_price + cost) / (gameState.shares + amt);
-            gameState.shares += amt; success = true;
-        } else message = "잔액 부족";
-    } else if (act === 'sell') {
-        if (gameState.shares >= amt) {
-            let val = p * amt; let repay = gameState.debt * (amt / gameState.shares);
-            gameState.money += (val - repay); gameState.debt -= repay; gameState.shares -= amt;
-            if (gameState.shares <= 0) { gameState.avg_price = 0; gameState.debt = 0; }
-            success = true;
-        } else message = "수량 부족";
-    } else if (act === 'buy_inv') {
-        let cost = p * amt; let req = cost / selectedLev;
-        if (gameState.money >= req) {
-            gameState.money -= req; gameState.inv_debt += (cost - req);
-            gameState.inv_avg_price = (gameState.inv_shares * gameState.inv_avg_price + cost) / (gameState.inv_shares + amt);
-            gameState.inv_shares += amt; success = true;
-        } else message = "잔액 부족";
-    } else if (act === 'sell_inv') {
-        if (gameState.inv_shares >= amt) {
-            let profit = amt * (gameState.inv_avg_price - p);
-            let val = (amt * gameState.inv_avg_price) + profit;
-            let repay = gameState.inv_debt * (amt / gameState.inv_shares);
-            gameState.money += (val - repay); gameState.inv_debt -= repay; gameState.inv_shares -= amt;
-            if (gameState.inv_shares <= 0) { gameState.inv_avg_price = 0; gameState.inv_debt = 0; }
-            success = true;
-        } else message = "수량 부족";
-    }
-
-    if (success) updateAndDraw();
-    else alert(message);
+    // 상시 표시창 업데이트
+    document.getElementById('stat-insight-lv').innerText = gameState.skills.insight;
+    document.getElementById('stat-risk-lv').innerText = gameState.skills.risk;
+    document.getElementById('stat-credit-lv').innerText = gameState.skills.credit;
 }
-
-function tradeAll(act) {
-    if (!gameState) return;
-    
-    let amt = 0;
-    const p = gameState.price;
-    const money = gameState.money;
-
-    if (act === 'buy' || act === 'buy_inv') {
-        // 부동 소수점 오차 방지를 위해 아주 작은 값을 빼서 안전하게 수량 계산
-        amt = Math.floor((money * selectedLev) / p);
-    } else if (act === 'sell') {
-        amt = gameState.shares;
-    } else if (act === 'sell_inv') {
-        amt = gameState.inv_shares;
-    }
-    
-    if (amt <= 0) return;
-
-    // 기존 입력값을 저장해두었다가 복원
-    const oldVal = document.getElementById('trade-amount').value;
-    document.getElementById('trade-amount').value = amt;
-    
-    // trade 함수를 한 번만 호출
-    trade(act);
-    
-    document.getElementById('trade-amount').value = oldVal;
-}
+function closeSkillMenu() { document.getElementById('skill-msg').style.display = 'none'; }
 
 function nextDay(days) {
-    if (gameState.game_over || gameState.game_clear) { updateAndDraw(); return; }
-    
-    // 시간 진행 시 차트 범위를 초기화하여 최신 캔들을 따라가게 함
-    currentRange = null;
+    if (gameState.game_over || gameState.game_clear) return;
+    if (document.getElementById('news-msg').style.display === 'flex' || 
+        document.getElementById('stageclear-msg').style.display === 'flex' ||
+        document.getElementById('skill-msg').style.display === 'flex') return;
 
     for (let d = 0; d < days; d++) {
         gameState.day++;
-        if (gameState.news_remaining > 0) {
-            gameState.news_remaining--;
-            if (gameState.news_remaining === 0) gameState.active_news = null;
-        }
-        if (!gameState.active_news && Math.random() < 0.10) {
-            let news = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
+        if (gameState.news_remaining > 0) { gameState.news_remaining--; if (gameState.news_remaining === 0) gameState.active_news = null; }
+
+        let newsProb = 0.10;
+        if (!gameState.active_news && Math.random() < newsProb) {
+            let pool = NEWS_POOL;
+            let newsIdx = Math.floor(Math.random() * pool.length);
+            if (gameState.skills.insight > 0 && pool[newsIdx].effect === 'bear' && Math.random() < (gameState.skills.insight * 0.15)) {
+                newsIdx = Math.floor(Math.random() * 3);
+            }
+            let news = pool[newsIdx];
             gameState.active_news = news; gameState.news_remaining = news.duration;
             gameState.news_history.push({ day: gameState.day, title: news.title });
+            document.getElementById('news-title').innerText = news.title;
+            document.getElementById('news-msg').style.display = 'flex';
+            gameState.total_asset = calculateTotalAsset(); updateAndDraw(); return; 
         }
 
-        let baseChange = Math.floor(Math.random() * 41) - 20;
+        let change = Math.floor(Math.random() * 41) - 20;
         if (gameState.active_news) {
-            let n = gameState.active_news; let i = n.intensity;
-            if (n.effect === 'bull') baseChange = Math.floor(Math.random() * (20 * i + 6)) - 5;
-            else if (n.effect === 'bear') baseChange = Math.floor(Math.random() * (20 * i + 6)) - (20 * i);
-            else if (n.effect === 'volatile') baseChange = Math.floor(Math.random() * (50 * i + 1)) - (25 * i);
+            let n = gameState.active_news;
+            if (n.effect === 'bull') change = Math.floor(Math.random() * (20 * n.intensity + 6)) - 5;
+            else if (n.effect === 'bear') change = Math.floor(Math.random() * (20 * n.intensity + 6)) - (20 * n.intensity);
         }
 
-        let o = gameState.price;
-        let c = Math.max(10, o + baseChange);
-        let h = Math.max(o, c) + Math.floor(Math.random() * 16);
-        let l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 16));
+        let o = gameState.price, c = Math.max(10, o + change);
+        let h = Math.max(o, c) + Math.floor(Math.random() * 11), l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 11));
         gameState.price = c;
-        gameState.history.push({ day: gameState.day, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 2501) + 500 });
+        gameState.history.push({ day: gameState.day, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 2000) + 500 });
 
-        let threshold = 0.4 - (gameState.skills.risk * 0.1);
-        if (calculateTotalAsset() < gameState.initial_seed * threshold) {
+        let total = calculateTotalAsset(); gameState.total_asset = total;
+
+        let threshold = Math.max(0.1, 0.4 - (gameState.skills.risk * 0.05));
+        if (total < gameState.initial_seed * threshold) {
             gameState.shares = gameState.inv_shares = gameState.debt = gameState.inv_debt = 0;
-            gameState.money = Math.max(0, calculateTotalAsset());
-            gameState.liquidated = true; break;
+            gameState.money = Math.max(0, total); gameState.liquidated = true; updateAndDraw(); return;
         }
 
         let stage = STAGES[gameState.current_stage_idx];
-        if (stage) {
-            if (calculateTotalAsset() >= stage.target) {
-                gameState.current_stage_idx++;
-                if (gameState.current_stage_idx >= STAGES.length) { gameState.game_clear = true; break; }
-            } else if (gameState.day >= stage.days) {
-                gameState.game_over = true; break;
+        if (total >= stage.target) {
+            gameState.current_stage_idx++;
+            gameState.skill_points++;
+            let bonus = gameState.skills.credit * 5000;
+            gameState.money += bonus;
+            if (gameState.current_stage_idx >= STAGES.length) { gameState.game_clear = true; }
+            else { 
+                document.getElementById('stage-clear-text').innerText = `STAGE ${gameState.current_stage_idx} 달성! (+보너스 $${bonus})`; 
+                document.getElementById('stageclear-msg').style.display = 'flex'; 
             }
+            updateAndDraw(); return;
+        }
+        if (gameState.day >= stage.days) {
+            gameState.game_over = true; document.getElementById('fail-reason').innerText = `목표 금액 $${stage.target.toLocaleString()} 달성 실패`; updateAndDraw(); return;
         }
     }
-    gameState.total_asset = calculateTotalAsset();
     updateAndDraw();
 }
 
 function updateAndDraw() {
     const raw = gameState.history;
-    let rawSet = [];
-    if (currentTF === 'daily') rawSet = raw.slice(-365);
-    else if (currentTF === 'monthly') rawSet = raw.slice(-1200);
-    else rawSet = raw;
-
     let grouped = {};
-    const baseDate = new Date(2026, 2, 11); // March 11, 2026
-    
-    rawSet.forEach(h => {
-        let dt = new Date(baseDate);
-        dt.setDate(dt.getDate() + h.day);
+    const baseDate = new Date(2026, 2, 11);
+    raw.forEach(h => {
+        let dt = new Date(baseDate); dt.setDate(dt.getDate() + h.day);
         let key, lbl;
-        if (currentTF === 'daily') {
-            key = h.day; lbl = `${dt.getMonth() + 1}/${dt.getDate()}`;
-        } else if (currentTF === 'monthly') {
-            key = `${dt.getFullYear()}-${dt.getMonth()}`;
-            lbl = `${String(dt.getFullYear()).slice(2)}.${dt.getMonth() + 1}`;
-        } else {
-            key = dt.getFullYear(); lbl = `${dt.getFullYear()}Y`;
-        }
-
-        if (!grouped[key]) {
-            grouped[key] = { open: h.open, high: h.high, low: h.low, close: h.close, vol: h.vol, label: lbl, day: h.day };
-        } else {
-            let g = grouped[key];
-            g.high = Math.max(g.high, h.high);
-            g.low = Math.min(g.low, h.low);
-            g.close = h.close;
-            g.vol += h.vol;
-        }
+        if (currentTF === 'daily') { key = h.day; lbl = `${dt.getMonth() + 1}/${dt.getDate()}`; }
+        else if (currentTF === 'monthly') { key = `${dt.getFullYear()}-${dt.getMonth()}`; lbl = `${String(dt.getFullYear()).slice(2)}.${dt.getMonth() + 1}`; }
+        else { key = dt.getFullYear(); lbl = `${dt.getFullYear()}Y`; }
+        if (!grouped[key]) grouped[key] = { open: h.open, high: h.high, low: h.low, close: h.close, vol: h.vol, label: lbl, day: h.day };
+        else { let g = grouped[key]; g.high = Math.max(g.high, h.high); g.low = Math.min(g.low, h.low); g.close = h.close; g.vol += h.vol; }
     });
 
-    const hist = Object.values(grouped);
-    const cl = hist.map(x => x.close);
-    const hi = hist.map(x => x.high);
-    const lo = hist.map(x => x.low);
+    let hist = Object.values(grouped).sort((a, b) => a.day - b.day);
+    let viewCount = 60; 
+    if (currentTF === 'daily') { hist = hist.slice(-90); viewCount = 45; }
+    else if (currentTF === 'monthly') { hist = hist.slice(-84); viewCount = 36; }
+    else { hist = hist.slice(-20); viewCount = 20; }
 
-    const m5 = getSMA(cl, 5), m20 = getSMA(cl, 20), m60 = getSMA(cl, 60);
-    const bb = getBollinger(cl);
-    const macdData = getMACD(cl);
-    const stochData = getStochastic(hi, lo, cl);
-    const rsi = getRSI(cl);
-    const ichi = getIchimoku(hi, lo);
-    const adxData = getADX(hi, lo, cl);
-    const cci = getCCI(hi, lo, cl);
-
-    hist.forEach((x, i) => {
-        x.ma5 = m5[i]; x.ma20 = m20[i]; x.ma60 = m60[i];
-        x.bb_u = bb.upper[i]; x.bb_l = bb.lower[i];
-        x.macd = macdData.macd[i]; x.macd_s = macdData.sig[i];
-        x.st_k = stochData.sk[i]; x.st_d = stochData.sd[i];
-        x.rsi = rsi[i];
-        x.ten = ichi.ten[i]; x.kij = ichi.kij[i]; x.sa = ichi.sa[i]; x.sb = ichi.sb[i];
-        x.adx = adxData.adx[i]; x.cci = cci[i];
-    });
-
-    draw(gameState, hist);
+    const cl = hist.map(x => x.close), hi = hist.map(x => x.high), lo = hist.map(x => x.low);
+    const m5 = getSMA(cl, 5), m20 = getSMA(cl, 20);
+    const bb = getBollinger(cl), macdData = getMACD(cl), stochData = getStoch(hi, lo, cl), rsi = getRSI(cl), ichi = getIchimoku(hi, lo), adx = getADX(hi, lo, cl), cci = getCCI(hi, lo, cl);
+    let subOrder = ['vol', 'macd', 'stoch', 'rsi', 'cci', 'adx'].filter(s => showInd[s]);
+    let finalRange = currentRange || [hist.length - viewCount - 0.5, hist.length + 1.5];
+    drawChart(gameState, hist, m5, m20, bb, macdData, stochData, rsi, ichi, adx, cci, subOrder, finalRange);
+    updateUI(gameState);
 }
 
-function draw(data, hist) {
-    document.getElementById('liquidation-msg').style.display = data.liquidated ? 'flex' : 'none';
-    document.getElementById('gameover-msg').style.display = data.game_over ? 'flex' : 'none';
-    document.getElementById('gameclear-msg').style.display = data.game_clear ? 'flex' : 'none';
-
-    const stage = STAGES[data.current_stage_idx] || STAGES[STAGES.length - 1];
-    document.getElementById('current-stage-num').innerText = stage.stage;
-    document.getElementById('target-money').innerText = `$${stage.target.toLocaleString()}`;
-    
-    const remaining = stage.days - data.day;
-    document.getElementById('remaining-days').innerText = `${remaining}일`;
-    
-    const prevStageDays = data.current_stage_idx > 0 ? STAGES[data.current_stage_idx - 1].days : 0;
-    const progressPercent = Math.min(100, ((data.day - prevStageDays) / (stage.days - prevStageDays)) * 100);
-    document.getElementById('stage-progress-bar').style.width = `${progressPercent}%`;
-    document.getElementById('stage-progress-bar').style.background = remaining <= 2 ? '#e74c3c' : '#2ecc71';
-
+function drawChart(data, hist, m5, m20, bb, macd, stoch, rsi, ichi, adx, cci, subOrder, range) {
     const chartDiv = document.getElementById('chart');
-    const x = hist.map(h => h.label);
-    const traces = [];
-    const currentPrice = data.price;
-
-    traces.push({ x: x, open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', name: 'Price', increasing: { line: { color: '#ff3131', width: 1.5 } }, decreasing: { line: { color: '#2196f3', width: 1.5 } }, yaxis: 'y' });
-    if (showInd.ma) {
-        traces.push({ x: x, y: hist.map(h => h.ma5), name: 'MA5', line: { color: '#ff9800', width: 2 }, yaxis: 'y' });
-        traces.push({ x: x, y: hist.map(h => h.ma20), name: 'MA20', line: { color: '#4caf50', width: 2 }, yaxis: 'y' });
-    }
-    if (showInd.bb) {
-        traces.push({ x: x, y: hist.map(h => h.bb_u), name: 'BB U', line: { color: 'rgba(128,128,128,0.5)', width: 1.5, dash: 'dash' }, yaxis: 'y' });
-        traces.push({ x: x, y: hist.map(h => h.bb_l), name: 'BB L', line: { color: 'rgba(128,128,128,0.5)', width: 1.5, dash: 'dash' }, yaxis: 'y' });
-    }
-    if (showInd.ichimoku) {
-        traces.push({ x: x, y: hist.map(h => h.ten), name: 'Tenkan', line: { color: '#ff4081', width: 1.5 }, yaxis: 'y' });
-        traces.push({ x: x, y: hist.map(h => h.kij), name: 'Kijun', line: { color: '#795548', width: 1.5 }, yaxis: 'y' });
-        traces.push({ x: x, y: hist.map(h => h.sb), name: 'Cloud', fill: 'tonexty', fillcolor: 'rgba(0,188,212,0.1)', line: { width: 0 }, yaxis: 'y' });
-    }
-
-    const subOrder = ['vol', 'macd', 'stoch', 'rsi', 'cci', 'adx'];
-    const activeSubs = subOrder.filter(s => showInd[s]);
-    const subCount = activeSubs.length;
-    const subH = 0.15;
-    const mainB = subCount === 0 ? 0 : (subH * subCount) + 0.02;
-
-    let finalRange = currentRange || [x.length - (currentTF === 'daily' ? 60 : (currentTF === 'monthly' ? 24 : 12)), x.length - 1];
-
-    const shapes = (chartDiv.layout && chartDiv.layout.shapes) ? [...chartDiv.layout.shapes.filter(s => s.editable !== false)] : [];
-    shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: currentPrice, y1: currentPrice, line: { color: 'black', width: 2, dash: 'dash' }, editable: false });
-    if (data.shares > 0) shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: data.avg_price, y1: data.avg_price, line: { color: 'red', width: 2 }, editable: false });
-    if (data.inv_shares > 0) shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: data.inv_avg_price, y1: data.inv_avg_price, line: { color: 'blue', width: 2 }, editable: false });
-
-    const annotations = [{ xref: 'paper', x: 1.01, yref: 'y', y: currentPrice, text: `<b>$${currentPrice}</b>`, showarrow: false, font: { color: 'white', size: 14 }, bgcolor: 'black', borderpadding: 4 }];
-    if (data.shares > 0) annotations.push({ xref: 'paper', x: 1.01, yref: 'y', y: data.avg_price, text: `<b>롱:$${Math.floor(data.avg_price)}</b>`, showarrow: false, font: { color: 'white', size: 12 }, bgcolor: '#e74c3c', borderpadding: 4 });
-    if (data.inv_shares > 0) annotations.push({ xref: 'paper', x: 1.01, yref: 'y', y: data.inv_avg_price, text: `<b>인:$${Math.floor(data.inv_avg_price)}</b>`, showarrow: false, font: { color: 'white', size: 12 }, bgcolor: '#3498db', borderpadding: 4 });
-
-    const layout = {
-        grid: { rows: subCount + 1, columns: 1, roworder: 'top to bottom' },
-        yaxis: { domain: [mainB, 1], side: 'right', autorange: true, fixedrange: false, gridcolor: '#eee' },
-        xaxis: { rangeslider: { visible: false }, type: 'category', range: finalRange, gridcolor: '#eee' },
-        margin: { t: 30, b: 30, l: 30, r: 100 },
+    Plotly.purge(chartDiv); 
+    const xIdx = hist.map((_, i) => i);
+    const traces = [{ x: xIdx, open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', name: 'Price', increasing: {line:{color:'#ff3131'}}, decreasing: {line:{color:'#2196f3'}}, yaxis: 'y' }];
+    if (showInd.ma) { traces.push({ x: xIdx, y: m5, name: 'MA5', line: {color:'#ff9800'}, yaxis: 'y' }); traces.push({ x: xIdx, y: m20, name: 'MA20', line: {color:'#4caf50'}, yaxis: 'y' }); }
+    if (showInd.bb) { traces.push({ x: xIdx, y: bb.u, name: 'BBU', line: {color:'#ccc', dash:'dash'}, yaxis: 'y' }); traces.push({ x: xIdx, y: bb.l, name: 'BBL', line: {color:'#ccc', dash:'dash'}, yaxis: 'y' }); }
+    if (showInd.ichimoku) { traces.push({ x: xIdx, y: ichi.t, name: 'Tenkan', line: {color:'#ff4081'}, yaxis: 'y' }); traces.push({ x: xIdx, y: ichi.k, name: 'Kijun', line: {color:'#795548'}, yaxis: 'y' }); }
+    const subH = 0.15, mainB = subOrder.length === 0 ? 0.08 : (subH * subOrder.length) + 0.08;
+    
+    // X축 및 Y축 기본 레이아웃
+    const layout = { 
+        grid: { rows: subOrder.length + 1, columns: 1, roworder: 'top to bottom' },
+        yaxis: { domain: [mainB, 1], side: 'right', gridcolor: '#eee' },
+        xaxis: { type: 'linear', tickvals: xIdx, ticktext: hist.map(h => h.label), range: range, gridcolor: '#eee', rangeslider: { visible: true, thickness: 0.02, borderwidth: 1 } },
+        margin: { t: 5, b: 5, l: 5, r: 100 }, // 우측 여백 조금 더 확보
         showlegend: false,
-        shapes: shapes,
-        annotations: annotations,
-        dragmode: currentDragMode,
-        newshape: { line: { color: 'red', width: 2 }, editable: true }
+        shapes: [],
+        annotations: [],
+        dragmode: currentDragMode 
     };
 
-    activeSubs.forEach((sub, i) => {
-        const yKey = 'y' + (i + 2);
-        const start = i * subH;
-        layout['yaxis' + (i + 2)] = { domain: [start, start + subH - 0.02], side: 'right', title: { text: sub.toUpperCase(), font: { size: 12, weight: 'bold' } }, fixedrange: true, gridcolor: '#eee' };
-        if (sub === 'vol') traces.push({ x: x, y: hist.map(h => h.vol), type: 'bar', marker: { color: 'rgba(158,158,158,0.6)' }, yaxis: yKey });
-        else if (sub === 'macd') {
-            traces.push({ x: x, y: hist.map(h => h.macd), line: { color: '#2196f3', width: 2 }, yaxis: yKey });
-            traces.push({ x: x, y: hist.map(h => h.macd_s), line: { color: '#ff9800', width: 2 }, yaxis: yKey });
-        }
-        else if (sub === 'stoch') {
-            traces.push({ x: x, y: hist.map(h => h.st_k), line: { color: '#2196f3', width: 2 }, yaxis: yKey });
-            traces.push({ x: x, y: hist.map(h => h.st_d), line: { color: '#ff9800', width: 2 }, yaxis: yKey });
-        }
-        else if (sub === 'rsi') {
-            traces.push({ x: x, y: hist.map(h => h.rsi), line: { color: '#9c27b0', width: 2.5 }, yaxis: yKey });
-            traces.push({ x: x, y: x.map(() => 70), line: { color: 'rgba(244,67,54,0.5)', width: 1, dash: 'dot' }, yaxis: yKey });
-            traces.push({ x: x, y: x.map(() => 30), line: { color: 'rgba(33,150,243,0.5)', width: 1, dash: 'dot' }, yaxis: yKey });
-        }
-        else if (sub === 'cci') {
-            traces.push({ x: x, y: hist.map(h => h.cci), line: { color: '#009688', width: 2.5 }, yaxis: yKey });
-            traces.push({ x: x, y: x.map(() => 100), line: { color: 'rgba(158,158,158,0.5)', width: 1, dash: 'dot' }, yaxis: yKey });
-            traces.push({ x: x, y: x.map(() => -100), line: { color: 'rgba(158,158,158,0.5)', width: 1, dash: 'dot' }, yaxis: yKey });
-        }
-        else if (sub === 'adx') traces.push({ x: x, y: hist.map(h => h.adx), line: { color: '#212121', width: 2.5 }, yaxis: yKey });
+    subOrder.forEach((s, i) => {
+        const yNum = i + 2; const yk = 'yaxis' + yNum; const st = i * subH;
+        layout[yk] = { domain: [st + 0.08, st + subH + 0.05], side: 'right', fixedrange: true, gridcolor: '#eee', title: { text: s.toUpperCase(), font:{size:8} } };
+        if (s === 'vol') traces.push({ x: xIdx, y: hist.map(h => h.vol), type: 'bar', marker: {color:'#ccc'}, yaxis: 'y' + yNum });
+        else if (s === 'macd') { traces.push({ x: xIdx, y: macd.macd, line:{color:'#2196f3'}, yaxis: 'y' + yNum }); traces.push({ x: xIdx, y: macd.signal, line:{color:'#ff9800'}, yaxis: 'y' + yNum }); }
+        else if (s === 'stoch') { traces.push({ x: xIdx, y: stoch.sk, line:{color:'#2196f3'}, yaxis: 'y' + yNum }); traces.push({ x: xIdx, y: stoch.sd, line:{color:'#ff9800'}, yaxis: 'y' + yNum }); }
+        else if (s === 'rsi') traces.push({ x: xIdx, y: rsi, line:{color:'#9c27b0'}, yaxis: 'y' + yNum });
+        else if (s === 'cci') traces.push({ x: xIdx, y: cci, line:{color:'#009688'}, yaxis: 'y' + yNum });
+        else if (s === 'adx') traces.push({ x: xIdx, y: adx, line:{color:'#212121'}, yaxis: 'y' + yNum });
     });
 
-    Plotly.react('chart', traces, layout, { displaylogo: false, editable: true, scrollZoom: true, responsive: true });
-    
-    chartDiv.on('plotly_relayout', function (eventData) {
-        if (eventData['xaxis.range[0]'] !== undefined) {
-            currentRange = [eventData['xaxis.range[0]'], eventData['xaxis.range[1]']];
-        }
-    });
+    // 현재가 및 평단가 표시 (선 + 가격 텍스트)
+    const curP = data.price;
+    layout.shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: curP, y1: curP, line: { color: 'black', width: 1, dash: 'dash' } });
+    layout.annotations.push({ xref: 'paper', x: 1.05, yref: 'y', y: curP, text: `$${curP.toLocaleString()}`, showarrow: false, font: { color: 'white', size: 11 }, bgcolor: 'black', borderpadding: 2 });
 
-    document.getElementById('money').innerText = Math.floor(data.money);
-    document.getElementById('total_asset').innerText = Math.floor(data.total_asset);
-    document.getElementById('shares').innerText = data.shares;
-    document.getElementById('avg_price').innerText = Math.floor(data.avg_price);
-    document.getElementById('inv_shares').innerText = data.inv_shares;
-    document.getElementById('inv_avg_price').innerText = Math.floor(data.inv_avg_price);
-    document.getElementById('total_debt').innerText = Math.floor(data.debt + data.inv_debt);
+    if (data.shares > 0) {
+        const avg = Math.floor(data.avg_price);
+        layout.shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: avg, y1: avg, line: { color: 'red', width: 1.5, dash: 'dot' } });
+        layout.annotations.push({ xref: 'paper', x: 1.05, yref: 'y', y: avg, text: `L:$${avg.toLocaleString()}`, showarrow: false, font: { color: 'white', size: 10 }, bgcolor: 'red', borderpadding: 2 });
+    }
+    if (data.inv_shares > 0) {
+        const iAvg = Math.floor(data.inv_avg_price);
+        layout.shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: iAvg, y1: iAvg, line: { color: 'blue', width: 1.5, dash: 'dot' } });
+        layout.annotations.push({ xref: 'paper', x: 1.05, yref: 'y', y: iAvg, text: `I:$${iAvg.toLocaleString()}`, showarrow: false, font: { color: 'white', size: 10 }, bgcolor: 'blue', borderpadding: 2 });
+    }
+
+    Plotly.newPlot('chart', traces, layout, { 
+        displaylogo: false, 
+        responsive: true, 
+        scrollZoom: true // 마우스 휠 줌 활성화
+    });
+    chartDiv.on('plotly_relayout', e => { if (e['xaxis.range[0]'] !== undefined) currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; });
 }
 
-window.onload = () => {
-    gameState = generateInitialState();
+function updateUI(s) {
+    document.getElementById('money').innerText = Math.floor(s.money).toLocaleString();
+    document.getElementById('total_asset').innerText = Math.floor(s.total_asset).toLocaleString();
+    document.getElementById('shares').innerText = Math.floor(s.shares).toLocaleString();
+    document.getElementById('avg_price').innerText = Math.floor(s.avg_price).toLocaleString();
+    document.getElementById('inv_shares').innerText = Math.floor(s.inv_shares).toLocaleString();
+    document.getElementById('inv_avg_price').innerText = Math.floor(s.inv_avg_price).toLocaleString();
+    document.getElementById('total_debt').innerText = Math.floor(s.debt + s.inv_debt).toLocaleString();
+    const stage = STAGES[s.current_stage_idx] || STAGES[STAGES.length - 1];
+    document.getElementById('current-stage-num').innerText = stage.stage;
+    document.getElementById('target-money').innerText = `$${stage.target.toLocaleString()}`;
+    document.getElementById('remaining-days').innerText = `${Math.max(0, stage.days - s.day)}일`;
+    const prevDays = s.current_stage_idx > 0 ? STAGES[s.current_stage_idx - 1].days : 0;
+    document.getElementById('stage-progress-bar').style.width = `${Math.min(100, ((s.day - prevDays) / (stage.days - prevDays)) * 100)}%`;
+    document.getElementById('liquidation-msg').style.display = s.liquidated ? 'flex' : 'none';
+    document.getElementById('gameover-msg').style.display = s.game_over ? 'flex' : 'none';
+    document.getElementById('gameclear-msg').style.display = s.game_clear ? 'flex' : 'none';
+    const list = document.getElementById('news-list');
+    if (s.news_history.length > 0) { list.innerHTML = s.news_history.slice().reverse().map(n => `<div class="news-item"><span class="news-day">${n.day}일차</span>${n.title}</div>`).join(''); }
+}
+
+function setLev(v, btn) { selectedLev = v; document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+function setDragMode(m) { currentDragMode = m; Plotly.relayout('chart', { dragmode: m }); }
+function toggleInd(n, btn) { showInd[n] = !showInd[n]; btn.classList.toggle('on'); updateAndDraw(); }
+function changeTF(tf) { currentTF = tf; currentRange = null; document.querySelectorAll('.btn-tf').forEach(b => b.classList.remove('active')); document.getElementById(tf).classList.add('active'); updateAndDraw(); }
+
+function trade(act) {
+    const amtInput = parseInt(document.getElementById('trade-amount').value);
+    if (isNaN(amtInput) || amtInput <= 0) return;
+    const p = gameState.price;
+
+    if (act === 'buy') {
+        let cost = p * amtInput, req = cost / selectedLev;
+        if (gameState.money >= req) {
+            gameState.money -= req; gameState.debt += (cost - req);
+            gameState.avg_price = (gameState.shares * gameState.avg_price + cost) / (gameState.shares + amtInput);
+            gameState.shares += amtInput;
+        }
+    } else if (act === 'sell' && gameState.shares > 0) {
+        let sellAmt = Math.min(amtInput, gameState.shares);
+        let val = p * sellAmt, repay = gameState.debt * (sellAmt / gameState.shares);
+        gameState.money += (val - repay); gameState.debt -= repay; gameState.shares -= sellAmt;
+        if (gameState.shares <= 0.01) { gameState.shares = 0; gameState.avg_price = 0; gameState.debt = 0; }
+    } else if (act === 'buy_inv') {
+        let cost = p * amtInput, req = cost / selectedLev;
+        if (gameState.money >= req) {
+            gameState.money -= req; gameState.inv_debt += (cost - req);
+            gameState.inv_avg_price = (gameState.inv_shares * gameState.inv_avg_price + cost) / (gameState.inv_shares + amtInput);
+            gameState.inv_shares += amtInput;
+        }
+    } else if (act === 'sell_inv' && gameState.inv_shares > 0) {
+        let sellAmt = Math.min(amtInput, gameState.inv_shares);
+        let profit = sellAmt * (gameState.inv_avg_price - p);
+        let val = (sellAmt * gameState.inv_avg_price) + profit;
+        let repay = gameState.inv_debt * (sellAmt / gameState.inv_shares);
+        gameState.money += (val - repay); gameState.inv_debt -= repay; gameState.inv_shares -= sellAmt;
+        if (gameState.inv_shares <= 0.01) { gameState.inv_shares = 0; gameState.avg_price = 0; gameState.debt = 0; }
+    }
     updateAndDraw();
-};
+}
+
+function tradeAll(act) {
+    if (!gameState) return;
+    let amt = 0;
+    if (act.includes('buy')) {
+        amt = Math.floor((gameState.money * selectedLev) / gameState.price);
+    } else {
+        amt = (act === 'sell') ? gameState.shares : gameState.inv_shares;
+    }
+    if (amt <= 0) return;
+    const oldVal = document.getElementById('trade-amount').value;
+    document.getElementById('trade-amount').value = Math.floor(amt);
+    trade(act);
+    document.getElementById('trade-amount').value = oldVal;
+}
+
+function resetGame() { 
+    if (confirm("초기화하시겠습니까?")) { 
+        gameState = generateInitialState(); currentRange = null; 
+        const list = document.getElementById('news-list');
+        if (list) list.innerHTML = `<p style="color:#7f8c8d; font-size:12px;">발생한 뉴스가 없습니다.</p>`;
+        updateAndDraw(); 
+    } 
+}
+window.onload = () => { gameState = generateInitialState(); updateAndDraw(); };

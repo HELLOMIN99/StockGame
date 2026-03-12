@@ -2,89 +2,144 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>주식 시뮬레이터</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주식 시뮬레이터 Pro</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="game-board">
-        <!-- 기존 청산 메시지 -->
-        <div id="liquidation-msg" class="liquidation-overlay">
+        <!-- 오버레이 메시지들 -->
+        <div id="liquidation-msg" class="liquidation-overlay" style="display:none;">
             <h2>🚨 강제 청산 발생! 🚨</h2>
-            <p style="font-size:20px;">자산이 60% 이상 하락하여 포지션이 강제 종료되었습니다.</p>
-            <button class="btn-tool" style="background:white; color:red; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">다시 시작하기</button>
+            <p>자산이 60% 이상 하락하여 포지션이 종료되었습니다.</p>
+            <button class="btn-tool" style="background:white; color:red;" onclick="resetGame()">다시 시작하기</button>
         </div>
-
-        <!-- 게임 오버 메시지 (기한 초과) -->
-        <div id="gameover-msg" class="liquidation-overlay" style="background: rgba(0,0,0,0.85);">
+        <div id="gameover-msg" class="liquidation-overlay" style="display:none; background: rgba(0,0,0,0.9);">
             <h2>💀 MISSION FAILED 💀</h2>
-            <p style="font-size:22px;">스테이지 목표 금액 달성에 실패하였습니다.</p>
-            <p id="fail-reason" style="font-size:18px; color: #bdc3c7;"></p>
-            <button class="btn-tool" style="background:#e74c3c; color:white; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">처음부터 다시 도전</button>
+            <p id="fail-reason"></p>
+            <button class="btn-tool" style="background:#e74c3c;" onclick="resetGame()">처음부터 다시 도전</button>
         </div>
-
-        <!-- 게임 클리어 메시지 -->
-        <div id="gameclear-msg" class="liquidation-overlay" style="background: rgba(46, 204, 113, 0.9);">
+        <div id="gameclear-msg" class="liquidation-overlay" style="display:none; background: rgba(46, 204, 113, 0.9);">
             <h2>🎉 ALL STAGES CLEARED! 🎉</h2>
-            <p style="font-size:24px;">축하합니다! 모든 스테이지를 정복하고 시장의 전설이 되었습니다.</p>
-            <p id="clear-final-asset" style="font-size:20px; font-weight: bold;"></p>
-            <button class="btn-tool" style="background:white; color:#2ecc71; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">명예의 전당 (다시 시작)</button>
+            <p id="clear-final-asset"></p>
+            <button class="btn-tool" style="background:white; color:#2ecc71;" onclick="resetGame()">명예의 전당</button>
+        </div>
+        <div id="news-msg" class="liquidation-overlay" style="display:none; background: rgba(44, 62, 80, 0.98); border: 5px solid #f1c40f;">
+            <h2 style="color: #f1c40f;">📰 경제 속보 📰</h2>
+            <p id="news-title" style="font-size:20px; font-weight: bold; padding: 20px; color: white;"></p>
+            <button class="btn-tool" style="background:#f1c40f; color:#2c3e50; font-size:18px; padding:10px 40px;" onclick="closeNewsOverlay()">확인</button>
+        </div>
+        
+        <!-- 스테이지 클리어 -->
+        <div id="stageclear-msg" class="liquidation-overlay" style="display:none; background: rgba(52, 152, 219, 0.98);">
+            <h2 style="color: white;">✨ STAGE CLEAR! ✨</h2>
+            <p id="stage-clear-text" style="font-size:22px; color: white; font-weight: bold;"></p>
+            <button class="btn-tool" style="background:white; color:#3498db; font-size:18px; padding:10px 40px;" onclick="showSkillMenu()">능력 강화 (스킬 포인트 획득!)</button>
         </div>
 
-        <!-- 스테이지 정보 창 -->
+        <!-- 스킬 업그레이드 오버레이 -->
+        <div id="skill-msg" class="liquidation-overlay" style="display:none; background: rgba(44, 62, 80, 0.98); border: 5px solid #2ecc71;">
+            <h2 style="color: #2ecc71;">🛠️ 투자자 능력 강화 🛠️</h2>
+            <p style="color: white; font-size: 16px;">남은 스킬 포인트: <span id="skill-points-val" style="color:#f1c40f; font-weight:bold; font-size:24px;">0</span></p>
+            <div class="skill-container" style="display:flex; flex-direction:column; gap:10px; margin-top:10px; width: 90%; max-width: 400px;">
+                <div class="skill-item" style="background:rgba(255,255,255,0.1); padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="text-align:left;">
+                        <b style="color:white; font-size:15px;">🔍 통찰력 (Insight)</b><br>
+                        <small style="color:#bdc3c7;">호재 발생 확률 증가</small>
+                    </div>
+                    <button class="btn-tf" onclick="upgradeSkill('insight')" style="background:#2ecc71; min-width:80px;">LV <span id="skill-insight-lv">0</span></button>
+                </div>
+                <div class="skill-item" style="background:rgba(255,255,255,0.1); padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="text-align:left;">
+                        <b style="color:white; font-size:15px;">🛡️ 위험 관리 (Risk)</b><br>
+                        <small style="color:#bdc3c7;">청산 임계치 완화</small>
+                    </div>
+                    <button class="btn-tf" onclick="upgradeSkill('risk')" style="background:#2ecc71; min-width:80px;">LV <span id="skill-risk-lv">0</span></button>
+                </div>
+                <div class="skill-item" style="background:rgba(255,255,255,0.1); padding:12px; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="text-align:left;">
+                        <b style="color:white; font-size:15px;">💳 신용도 (Credit)</b><br>
+                        <small style="color:#bdc3c7;">클리어 보너스 지급</small>
+                    </div>
+                    <button class="btn-tf" onclick="upgradeSkill('credit')" style="background:#2ecc71; min-width:80px;">LV <span id="skill-credit-lv">0</span></button>
+                </div>
+            </div>
+            <button class="btn-tool" style="background:#2ecc71; color:white; margin-top:20px; font-size:18px; padding:10px 60px;" onclick="closeSkillMenu()">강화 완료</button>
+        </div>
+
         <div id="stage-display" class="stage-container">
             <div class="stage-title">STAGE <span id="current-stage-num">1</span></div>
-            <div class="stage-info">목표: <span id="target-money" class="target-val">$25,000</span></div>
-            <div class="stage-info">남은 기간: <span id="remaining-days" class="days-val">7일</span></div>
-            <div class="progress-container">
-                <div id="stage-progress-bar" class="progress-bar"></div>
+            <div class="stage-info">목표: <span id="target-money" class="target-val"></span></div>
+            <div class="stage-info">남은 기간: <span id="remaining-days" class="days-val"></span></div>
+            <div class="progress-container"><div id="stage-progress-bar" class="progress-bar"></div></div>
+            
+            <!-- 보유 능력치 표시 (추가) -->
+            <div id="persistent-skills" style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 11px;">
+                <div style="color: #bdc3c7; margin-bottom: 3px; font-weight: bold;">보유 능력치</div>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <span>🔍 통찰력: LV <span id="stat-insight-lv">0</span></span>
+                    <span>🛡️ 위험관리: LV <span id="stat-risk-lv">0</span></span>
+                    <span>💳 신용도: LV <span id="stat-credit-lv">0</span></span>
+                </div>
             </div>
         </div>
 
-        <h1>📊 주식 시뮬레이터</h1>
+        <h1>📊 주식 시뮬레이터 Pro</h1>
 
-        <div class="tool-group">
-            <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동</button>
-            <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기</button>
-            <button class="btn-tool" style="background:#e67e22; color:white;" onclick="undoLastShape()">↩️ 취소</button>
-            <button class="btn-tool" style="background:#6c757d; color:white;" onclick="clearShapes()">🧹 지우기</button>
-            <button class="btn-tool" style="background:#34495e; color:white;" onclick="resetGame()">🆕 리셋</button>
+        <div class="main-layout">
+            <div class="chart-area">
+                <div class="tool-group">
+                    <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동</button>
+                    <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기</button>
+                    <button class="btn-tool" style="background:#e67e22; color:white;" onclick="undoLastShape()">↩️ 취소</button>
+                    <button class="btn-tool" style="background:#6c757d; color:white;" onclick="clearShapes()">🧹 지우기</button>
+                    <button class="btn-tool" style="background:#34495e; color:white;" onclick="resetGame()">🆕 리셋</button>
+                </div>
+                <div class="indicator-menu">
+                    <button class="btn-ind on" onclick="toggleInd('ma', this)">이평선</button>
+                    <button class="btn-ind" onclick="toggleInd('bb', this)">볼린저</button>
+                    <button class="btn-ind" onclick="toggleInd('ichimoku', this)">일목</button>
+                    <button class="btn-ind" onclick="toggleInd('vol', this)">거래량</button>
+                    <button class="btn-ind" onclick="toggleInd('macd', this)">MACD</button>
+                    <button class="btn-ind" onclick="toggleInd('stoch', this)">스토캐스틱</button>
+                    <button class="btn-ind" onclick="toggleInd('rsi', this)">RSI</button>
+                    <button class="btn-ind" onclick="toggleInd('cci', this)">CCI</button>
+                    <button class="btn-ind" onclick="toggleInd('adx', this)">ADX</button>
+                </div>
+                <div class="tf-container">
+                    <button class="btn-tf active" id="daily" onclick="changeTF('daily')">일봉</button>
+                    <button class="btn-tf" id="monthly" onclick="changeTF('monthly')">월봉</button>
+                    <button class="btn-tf" id="yearly" onclick="changeTF('yearly')">년봉</button>
+                </div>
+                <div id="chart"></div>
+            </div>
+
+            <div class="news-history-panel">
+                <h3>📜 뉴스 히스토리</h3>
+                <div id="news-list" class="news-list">
+                    <p style="color:#7f8c8d; font-size:12px;">발생한 뉴스가 없습니다.</p>
+                </div>
+            </div>
         </div>
-        <div class="indicator-menu">
-            <button class="btn-ind on" onclick="toggleInd('ma', this)">이평선</button>
-            <button class="btn-ind" onclick="toggleInd('bb', this)">볼린저밴드</button>
-            <button class="btn-ind" onclick="toggleInd('ichimoku', this)">일목균형표</button>
-            <button class="btn-ind" onclick="toggleInd('vol', this)">거래량</button>
-            <button class="btn-ind" onclick="toggleInd('macd', this)">MACD</button>
-            <button class="btn-ind" onclick="toggleInd('stoch', this)">스토캐스틱</button>
-            <button class="btn-ind" onclick="toggleInd('rsi', this)">RSI</button>
-            <button class="btn-ind" onclick="toggleInd('cci', this)">CCI</button>
-            <button class="btn-ind" onclick="toggleInd('adx', this)">DMI/ADX</button>
-        </div>
-        <div class="tf-container">
-            <button class="btn-tf active" id="daily" onclick="changeTF('daily')">일봉</button>
-            <button class="btn-tf" id="monthly" onclick="changeTF('monthly')">월봉</button>
-            <button class="btn-tf" id="yearly" onclick="changeTF('yearly')">년봉</button>
-        </div>
-        <div id="chart"></div>
+
         <div class="dashboard">
-            <p>💰 현금: $<span id="money">10000</span></p>
-            <p>🏆 총자산: $<span id="total_asset">10000</span></p>
-            <p>📈 롱주식: <span id="shares">0</span>주 (평단:$<span id="avg_price">0</span>)</p>
-            <p>📉 인버스: <span id="inv_shares">0</span>주 (평단:$<span id="inv_avg_price">0</span>)</p>
-            <p>🏦 총부채: $<span id="total_debt">0</span></p>
+            <p>💰 현금: $<span id="money">0</span></p>
+            <p>🏆 총자산: $<span id="total_asset">0</span></p>
+            <p>📈 롱: <span id="shares">0</span>주 ($<span id="avg_price">0</span>)</p>
+            <p>📉 인버스: <span id="inv_shares">0</span>주 ($<span id="inv_avg_price">0</span>)</p>
+            <p>🏦 부채: $<span id="total_debt">0</span></p>
         </div>
+
         <div class="trade-controls">
             <div style="width:100%; margin-bottom:10px;">
-                <span style="font-weight:bold; margin-right:10px;">하이 레버리지:</span>
+                <span style="font-weight:bold;">레버리지:</span>
                 <button class="btn-tf active lev-btn" onclick="setLev(1, this)">1x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(10, this)" style="color:#e67e22;">10x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(20, this)" style="color:#e67e22;">20x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(30, this)" style="color:#e74c3c;">30x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(40, this)" style="color:#e74c3c;">40x</button>
-                <input type="number" id="trade-amount" class="amount-input" value="1" min="1" style="margin-left:20px;">
+                <button class="btn-tf lev-btn" onclick="setLev(10, this)">10x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(20, this)">20x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(30, this)">30x</button>
+                <input type="number" id="trade-amount" class="amount-input" value="1" min="1">
             </div>
-            
             <div class="trade-section">
                 <h3>📈 롱 (Long)</h3>
                 <div style="display:flex; gap:5px;">
@@ -94,7 +149,6 @@
                     <button class="trade" style="background:#c0392b;" onclick="tradeAll('sell')">풀매도</button>
                 </div>
             </div>
-
             <div class="trade-section">
                 <h3>📉 인버스 (Inverse)</h3>
                 <div style="display:flex; gap:5px;">
@@ -104,7 +158,6 @@
                     <button class="trade" style="background:#8e44ad;" onclick="tradeAll('sell_inv')">풀매도</button>
                 </div>
             </div>
-
             <div class="trade-section">
                 <h3>⏳ 시간 진행</h3>
                 <div style="display:flex; gap:5px;">
@@ -114,7 +167,6 @@
             </div>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
