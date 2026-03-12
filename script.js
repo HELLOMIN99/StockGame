@@ -343,15 +343,32 @@ function updateUI(s) {
     document.getElementById('inv_shares').innerText = Math.floor(s.inv_shares).toLocaleString();
     document.getElementById('inv_avg_price').innerText = Math.floor(s.inv_avg_price).toLocaleString();
     document.getElementById('total_debt').innerText = Math.floor(s.debt + s.inv_debt).toLocaleString();
+    
     const stage = STAGES[s.current_stage_idx] || STAGES[STAGES.length - 1];
-    document.getElementById('current-stage-num-side').innerText = stage.stage;
-    document.getElementById('target-money-side').innerText = `$${stage.target.toLocaleString()}`;
-    document.getElementById('remaining-days-side').innerText = `${Math.max(0, stage.days - s.day)}일`;
-    document.getElementById('stage-progress-bar-side').style.width = `${Math.min(100, (s.money / stage.target) * 100)}%`;
-    document.getElementById('stat-insight-lv').innerText = s.skills.insight; document.getElementById('stat-risk-lv').innerText = s.skills.risk; document.getElementById('stat-credit-lv').innerText = s.skills.credit;
-    document.getElementById('player-rank-side').innerText = getRank(total);
-    const list = document.getElementById('news-list');
-    if (s.news_history.length > 0) { list.innerHTML = s.news_history.slice().reverse().map(n => `<div class="news-item"><span style="font-weight:bold; opacity:0.6; display:block; font-size:10px;">${n.day}일차</span>${n.title}</div>`).join(''); }
+    
+    // Update both Desktop and Mobile elements
+    ['side', 'mobile'].forEach(suffix => {
+        const stageNum = document.getElementById(`current-stage-num-${suffix}`);
+        const targetMoney = document.getElementById(`target-money-${suffix}`);
+        const remainingDays = document.getElementById(`remaining-days-${suffix}`);
+        const progressBar = document.getElementById(`stage-progress-bar-${suffix}`);
+        const playerRank = document.getElementById(`player-rank-${suffix}`);
+        const newsList = document.getElementById(`news-list${suffix === 'mobile' ? '-mobile' : ''}`);
+
+        if (stageNum) stageNum.innerText = stage.stage;
+        if (targetMoney) targetMoney.innerText = `$${stage.target.toLocaleString()}`;
+        if (remainingDays) remainingDays.innerText = `${Math.max(0, stage.days - s.day)}일`;
+        if (progressBar) progressBar.style.width = `${Math.min(100, (s.money / stage.target) * 100)}%`;
+        if (playerRank) playerRank.innerText = getRank(total);
+        if (newsList && s.news_history.length > 0) {
+            newsList.innerHTML = s.news_history.slice().reverse().map(n => `<div class="news-item"><span style="font-weight:bold; opacity:0.6; display:block; font-size:10px;">${n.day}일차</span>${n.title}</div>`).join('');
+        }
+    });
+
+    document.getElementById('stat-insight-lv').innerText = s.skills.insight; 
+    document.getElementById('stat-risk-lv').innerText = s.skills.risk; 
+    document.getElementById('stat-credit-lv').innerText = s.skills.credit;
+    
     updateInventoryUI();
 }
 
@@ -379,4 +396,17 @@ function handleTradeAll(a) { if (!gameState) return; let p = gameState.price, le
 function resetGame() { gameState = generateInitialState(); currentRange = null; marketEnergy = 1.0; const list = document.getElementById('news-list'); if (list) list.innerHTML = `<p style=\"opacity:0.5; font-size:12px;\">뉴스가 없습니다.</p>`; document.querySelectorAll('.liquidation-overlay').forEach(el => el.style.display = 'none'); updateAndDraw(); }
 function undoLastShape() { const c = document.getElementById('chart'); if (c.layout && c.layout.shapes) { const userShapes = c.layout.shapes.filter(s => s.xref !== 'paper'); if (userShapes.length > 0) { const lastUserShape = userShapes[userShapes.length - 1]; const newShapes = c.layout.shapes.filter(s => s !== lastUserShape); Plotly.relayout('chart', { shapes: newShapes }); } } }
 function clearShapes() { const c = document.getElementById('chart'); if (c.layout && c.layout.shapes) { const systemShapes = c.layout.shapes.filter(s => s.xref === 'paper'); Plotly.relayout('chart', { shapes: systemShapes }); } }
+
+function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+    
+    // 차트 크기 재조정 (모바일에서 탭 전환 시 레이아웃 깨짐 방지)
+    setTimeout(() => {
+        Plotly.Plots.resize('chart');
+    }, 100);
+}
+
 window.onload = () => { gameState = generateInitialState(); updateAndDraw(); };
