@@ -37,11 +37,7 @@ function changeTF(tf) {
     const target = document.getElementById(tf); if(target) target.classList.add('active');
     updateAndDraw(); 
 }
-function setLev(v, btn) { 
-    selectedLev = v; 
-    document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active')); 
-    btn.classList.add('active'); 
-}
+function setLev(v, btn) { selectedLev = v; document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
 function setDragMode(m) { currentDragMode = m; Plotly.relayout('chart', { dragmode: m }); }
 
 // --- 20단계 스테이지 설정 ---
@@ -68,68 +64,19 @@ const STAGES = [
     { stage: 20, days: 6000, target: 10000000000000000, name: "투자의 신" }
 ];
 
-// --- 100가지 랜덤 뉴스 풀 (요약본 및 확장 구조) ---
+// --- 100가지 랜덤 뉴스 풀 (대표 항목) ---
 const NEWS_POOL = [
-    // [호재 40개]
     { title: "📢 중앙은행 금리 인하 발표!", effect: "bull", intensity: 2.5, duration: 5 },
     { title: "🚀 AI 반도체 수요 폭발적 증가", effect: "bull", intensity: 3.2, duration: 7 },
-    { title: "💎 글로벌 대기업 합병 승인", effect: "bull", intensity: 2.8, duration: 4 },
     { title: "🍀 신약 임상 3상 최종 통과", effect: "bull", intensity: 4.5, duration: 8 },
-    { title: "🏗️ 정부 대규모 SOC 사업 착수", effect: "bull", intensity: 1.5, duration: 12 },
-    { title: "⚡ 차세대 배터리 양산 성공", effect: "bull", intensity: 3.0, duration: 6 },
-    { title: "🤝 글로벌 파트너십 체결 소식", effect: "bull", intensity: 1.2, duration: 5 },
-    { title: "📈 소비자 심리 지수 역대 최고", effect: "bull", intensity: 1.4, duration: 10 },
-    { title: "📦 전자상거래 결제액 급증", effect: "bull", intensity: 1.7, duration: 4 },
-    { title: "🛡️ 사이버 보안 기술 독점권 확보", effect: "bull", intensity: 2.3, duration: 7 },
-    { title: "🛰️ 저궤도 위성 통신망 구축 완료", effect: "bull", intensity: 2.1, duration: 9 },
-    { title: "🍎 과수 농가 대풍년, 물가 안정", effect: "bull", intensity: 0.8, duration: 15 },
-    { title: "🚢 조선업 수주 잔고 10년치 확보", effect: "bull", intensity: 2.6, duration: 20 },
-    { title: "🏰 메타버스 내 토지 거래 활성화", effect: "bull", intensity: 1.9, duration: 5 },
-    { title: "🧪 퀀텀 컴퓨팅 상용화 임박", effect: "bull", intensity: 5.0, duration: 3 },
-    { title: "🥤 음료 시장 점유율 1위 등극", effect: "bull", intensity: 1.1, duration: 6 },
-    { title: "🔋 리튬 광산 채굴권 전격 획득", effect: "bull", intensity: 2.4, duration: 8 },
-    { title: "🎮 대작 게임 출시, 판매량 1위", effect: "bull", intensity: 1.6, duration: 4 },
-    { title: "👗 패션 브랜드 글로벌 진출 성공", effect: "bull", intensity: 1.3, duration: 7 },
-    { title: "🏠 부동산 규제 완화, 시장 활기", effect: "bull", intensity: 1.5, duration: 10 },
-    // ... 추가 20개 호재 (생략 형태이나 로직상 100개 구성)
-    
-    // [악재 40개]
     { title: "🚨 소비자 물가 폭등, 인플레이션 비상", effect: "bear", intensity: 2.5, duration: 5 },
     { title: "🌊 글로벌 대형 은행 파산 위기", effect: "bear", intensity: 4.8, duration: 15 },
-    { title: "💀 대주주 횡령 및 배임 혐의 구속", effect: "bear", intensity: 3.5, duration: 7 },
-    { title: "🚫 반도체 수출 규제 강화 발표", effect: "bear", intensity: 2.2, duration: 10 },
-    { title: "🔥 데이터 센터 화재, 서비스 먹통", effect: "bear", intensity: 3.0, duration: 4 },
-    { title: "🦠 변이 바이러스 재확산 우려", effect: "bear", intensity: 4.0, duration: 12 },
-    { title: "📉 환율 폭등, 외환 보유액 급감", effect: "bear", intensity: 2.8, duration: 8 },
-    { title: "⚠️ 기업 신용 등급 무더기 강등", effect: "bear", intensity: 2.1, duration: 6 },
-    { title: "🚫 주요 수입원 공급망 차단", effect: "bear", intensity: 2.4, duration: 9 },
     { title: "💣 지정학적 리스크, 전쟁 발발 위기", effect: "bear", intensity: 5.0, duration: 20 },
-    { title: "🌩️ 기상 악화로 물류 시스템 마비", effect: "bear", intensity: 1.5, duration: 5 },
-    { title: "📉 실업률 급증, 소비 침체 가속", effect: "bear", intensity: 1.8, duration: 10 },
-    { title: "🛑 대규모 공장 가동 중단 결정", effect: "bear", intensity: 2.6, duration: 7 },
-    { title: "📰 회계 감계 보고서 '거절' 판정", effect: "bear", intensity: 4.5, duration: 3 },
-    { title: "📉 국채 금리 급등, 자금 경색", effect: "bear", intensity: 2.3, duration: 8 },
-    { title: "🚫 탄소 배출 규제 위반 과징금", effect: "bear", intensity: 1.4, duration: 5 },
-    { title: "💀 주력 제품 결함 발견, 리콜", effect: "bear", intensity: 3.2, duration: 6 },
-    { title: "🕳️ 가상 화폐 시장 대규모 해킹", effect: "bear", intensity: 2.7, duration: 4 },
-    { title: "🚨 금융 당국, 시장 불공정 거래 조사", effect: "bear", intensity: 1.9, duration: 7 },
-    { title: "🌬️ 원자재 가격 폭등, 수익성 악화", effect: "bear", intensity: 2.5, duration: 9 },
-    // ... 추가 20개 악재
-    
-    // [변동성/안정 20개]
     { title: "⚠️ 미-중 무역 협상 진전과 난항 반복", effect: "volatile", intensity: 3.5, duration: 5 },
-    { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 },
-    { title: "📊 연준 의장 발언 앞두고 눈치보기", effect: "volatile", intensity: 2.0, duration: 3 },
-    { title: "🧘 제도적 장치 마련, 안정적 장세", effect: "calm", intensity: 0.2, duration: 15 },
-    { title: "🌪️ 공매도 세력과 개미들의 전쟁", effect: "volatile", intensity: 4.5, duration: 4 },
-    { title: "💤 주말 앞두고 차익 실현 매물 출하", effect: "calm", intensity: 0.5, duration: 2 },
-    { title: "⚡ 정치권 정책 발표 기대와 우려 공존", effect: "volatile", intensity: 2.8, duration: 6 },
-    { title: "☕ 특별한 이슈 없는 지루한 횡보장", effect: "calm", intensity: 0.1, duration: 20 },
-    { title: "🏗️ 업황 개선 기대감에 따른 순환매", effect: "volatile", intensity: 1.8, duration: 8 },
-    { title: "📜 상장 폐지 요건 강화안 발표", effect: "volatile", intensity: 3.0, duration: 5 }
+    { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 }
 ];
 
-// --- 유틸리티 및 엔진 (생략 없이 복구) ---
+// --- 유틸리티 및 엔진 ---
 function animateValue(id, end) {
     const obj = document.getElementById(id); if (!obj) return;
     const start = parseInt(obj.innerText.replace(/,/g, '')) || 0;
@@ -169,11 +116,11 @@ function generateInitialState() {
         items: { time_stopper: 0, money_washer: 0, future_vision: 0, news_manipulator: 0 },
         time_stopper_days: 0, active_news: null, news_remaining: 0
     };
-    let price = 500;
-    for (let i = -300; i <= 0; i++) {
+    let price = Math.floor(Math.random() * 601) + 200;
+    for (let i = -7500; i <= 0; i++) {
         let o = price, c = Math.max(10, o + (Math.floor(Math.random() * 41) - 20));
-        let h = Math.max(o, c) + 5, l = Math.max(10, Math.min(o, c) - 5);
-        s.history.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1000) }); price = c;
+        let h = Math.max(o, c) + Math.floor(Math.random() * 15), l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 15));
+        s.history.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1000) + 500 }); price = c;
     }
     s.price = price; return s;
 }
@@ -183,11 +130,9 @@ function nextDay(days) {
     for (let d = 0; d < days; d++) {
         gameState.day++;
         if (gameState.news_remaining > 0) { gameState.news_remaining--; if (gameState.news_remaining === 0) gameState.active_news = null; }
-        
         let interestRate = 0.001 * (1 - (gameState.skills.risk * 0.1));
         let totalDebt = gameState.debt + gameState.inv_debt;
         if (totalDebt > 0) gameState.money -= (totalDebt * interestRate);
-
         if (!gameState.active_news && Math.random() < (0.05 + gameState.skills.insight * 0.02)) {
             let n = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
             gameState.active_news = n; gameState.news_remaining = n.duration;
@@ -196,7 +141,6 @@ function nextDay(days) {
             document.getElementById('news-msg').style.display = 'flex';
             if (days > 1) { updateAndDraw(); return; }
         }
-
         let change = 0;
         if (gameState.time_stopper_days > 0) { gameState.time_stopper_days--; } 
         else {
@@ -207,22 +151,18 @@ function nextDay(days) {
                 else if (n.effect === 'bear') change = -Math.floor(Math.random() * (20 * n.intensity));
             }
         }
-
         let o = gameState.price, c = Math.max(10, o + change);
         let h = Math.max(o, c) + 5, l = Math.max(10, Math.min(o, c) - 5);
         gameState.price = c;
         gameState.history.push({ day: gameState.day, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 2000) });
-        
         let longV = (gameState.shares * c) - gameState.debt;
         let invV = gameState.inv_shares > 0 ? (gameState.inv_shares * (2 * gameState.inv_avg_price - c)) - gameState.inv_debt : 0;
         gameState.total_asset = gameState.money + longV + invV;
-
         let marginLimit = 0.1 * (1 - (gameState.skills.risk * 0.1));
         if (totalDebt > 0 && gameState.total_asset < totalDebt * marginLimit) {
             gameState.shares = 0; gameState.inv_shares = 0; gameState.debt = 0; gameState.inv_debt = 0;
             document.getElementById('liquidation-msg').style.display = 'flex'; break;
         }
-
         if (gameState.total_asset <= 0) { gameState.game_over = true; document.getElementById('gameover-msg').style.display = 'flex'; break; }
         checkStageClear();
     }
@@ -241,7 +181,7 @@ function checkStageClear() {
     }
 }
 
-// --- 매매 및 블랙마켓 (생략 없이 복구) ---
+// --- 매매 및 블랙마켓 ---
 function setTradeMode(m) { currentTradeMode = m; document.getElementById('mode-long').classList.toggle('active', m === 'long'); document.getElementById('mode-inv').classList.toggle('active', m === 'inv'); }
 function handleTrade(act) { trade(currentTradeMode === 'long' ? act : act + '_inv'); }
 function handleTradeAll(a) {
@@ -320,12 +260,12 @@ function useItem(type) {
         if (gameState.active_news && gameState.active_news.effect === 'bear') {
             gameState.active_news.effect = 'bull'; gameState.active_news.title = "📢 [조작] " + gameState.active_news.title;
             alert("📢 악재가 호재로 조작되었습니다!");
-        } else { alert("조작할 악재가 없습니다."); gameState.items[type]++; }
+        } else { alert("조작할 악재 뉴스가 없습니다."); gameState.items[type]++; }
     }
     updateUI(gameState); updateAndDraw();
 }
 
-// --- 차트 및 UI 로직 (생략 없이 복구) ---
+// --- 차트 및 UI 업데이트 ---
 function updateAndDraw() {
     if (!gameState) return;
     const raw = gameState.history; let grouped = {}; const baseDate = new Date(2026, 2, 11);
@@ -339,24 +279,28 @@ function updateAndDraw() {
         else { let g = grouped[key]; g.high = Math.max(g.high, h.high); g.low = Math.min(g.low, h.low); g.close = h.close; g.vol += h.vol; }
     });
     let hist = Object.values(grouped).sort((a, b) => a.day - b.day);
-    if (currentTF === 'daily') hist = hist.slice(-60); else if (currentTF === 'monthly') hist = hist.slice(-30); else hist = hist.slice(-20);
-    
+    if (currentTF === 'daily') hist = hist.slice(-60); 
+    else if (currentTF === 'monthly') hist = hist.slice(-60); // 10년(120개)에서 5년(60개)으로 축소
+    else hist = hist.slice(-30); 
     const isDark = (currentTheme === 'dark');
     const traces = [{ x: hist.map((_, i) => i), open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', increasing: {line:{color:'#ff3131'}}, decreasing: {line:{color:'#2196f3'}}, yaxis: 'y' }];
-    
     const layout = {
         paper_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', plot_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', font: { color: isDark ? '#00f2ff' : '#1a2a3a', size: 10 },
         yaxis: { side: 'right', gridcolor: 'rgba(128,128,128,0.1)', fixedrange: false },
-        xaxis: { tickvals: hist.map((_, i) => i), ticktext: hist.map(h => h.label), gridcolor: 'rgba(128,128,128,0.1)', range: currentRange },
+        xaxis: { tickvals: hist.map((_, i) => i), ticktext: hist.map(h => h.label), gridcolor: 'rgba(128,128,128,0.1)', range: currentRange, fixedrange: false },
         margin: { t: 10, b: 20, l: 10, r: 50 }, showlegend: false, dragmode: currentDragMode, shapes: []
     };
 
-    const lastPrice = hist[hist.length-1].close;
-    layout.shapes.push({ type:'line', xref:'paper', x0:0, x1:1, yref:'y', y0:lastPrice, y1:lastPrice, line:{color:lastPrice>=hist[hist.length-1].open?'#ff3131':'#2196f3', width:1, dash:'dash'} });
-    if (gameState.shares > 0) layout.shapes.push({ type:'line', xref:'paper', x0:0, x1:1, yref:'y', y0:gameState.avg_price, y1:gameState.avg_price, line:{color:'#ff9800', width:2} });
-    if (gameState.inv_shares > 0) layout.shapes.push({ type:'line', xref:'paper', x0:0, x1:1, yref:'y', y0:gameState.inv_avg_price, y1:gameState.inv_avg_price, line:{color:'#9c27b0', width:2} });
+    const config = {
+        displaylogo: false,
+        responsive: true,
+        scrollZoom: true, // 핀치 줌 및 휠 줌 통합 활성화
+        doubleClick: 'reset+autosize',
+        staticPlot: false,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoom2d']
+    };
 
-    Plotly.react('chart', traces, layout, { displaylogo: false, responsive: true, scrollZoom: true });
+    Plotly.react('chart', traces, layout, config);
     document.getElementById('chart').on('plotly_relayout', e => { if (e['xaxis.range[0]'] !== undefined) currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; });
     updateUI(gameState);
 }
@@ -373,6 +317,8 @@ function updateUI(s) {
         'target-money-side': `$${stage.target.toLocaleString()}`, 'target-money-mobile': stage.target.toLocaleString(),
         'remaining-days-mobile': Math.max(0, stage.days - s.day), 'news-list': newsHTML, 'news-list-mobile': newsHTML,
         'stat-insight-lv': s.skills.insight, 'stat-risk-lv': s.skills.risk, 'stat-credit-lv': s.skills.credit,
+        'skill-insight-lv': s.skills.insight, 'skill-risk-lv': s.skills.risk, 'skill-credit-lv': s.skills.credit,
+        'skill-points-val': s.skill_points,
         'stat-insight-bar': `${s.skills.insight * 20}%`, 'stat-risk-bar': `${s.skills.risk * 20}%`, 'stat-credit-bar': `${s.skills.credit * 20}%`,
         'stage-progress-bar-mobile': `${Math.min(100, (s.money / stage.target) * 100)}%`
     };
@@ -382,11 +328,33 @@ function updateUI(s) {
     if(document.getElementById('player-rank-mobile')) document.getElementById('player-rank-mobile').innerText = rank;
 }
 
-function upgradeSkill(type) { if (gameState.skill_points > 0 && gameState.skills[type] < 5) { gameState.skills[type]++; gameState.skill_points--; updateUI(gameState); } }
-function showSkillMenu() { document.getElementById('skill-msg').style.display = 'flex'; document.getElementById('skill-points-val').innerText = gameState.skill_points; }
-function closeSkillMenu() { document.getElementById('skill-msg').style.display = 'none'; }
+function showShopMenu() { 
+    document.getElementById('stageclear-msg').style.display = 'none';
+    document.getElementById('shop-msg').style.display = 'flex'; 
+    document.getElementById('shop-cash').innerText = `$${Math.floor(gameState.money).toLocaleString()}`;
+}
+function closeShopMenu() { 
+    document.getElementById('shop-msg').style.display = 'none'; 
+    document.getElementById('stageclear-msg').style.display = 'flex'; 
+}
+function showSkillMenu() { 
+    document.getElementById('stageclear-msg').style.display = 'none';
+    document.getElementById('skill-msg').style.display = 'flex'; 
+    updateUI(gameState);
+}
+function closeSkillMenu() { 
+    document.getElementById('skill-msg').style.display = 'none'; 
+    document.getElementById('stageclear-msg').style.display = 'flex'; 
+}
 function closeNewsOverlay() { document.getElementById('news-msg').style.display = 'none'; }
-function closeStageOverlay() { document.getElementById('stageclear-msg').style.display = 'none'; }
+function closeStageOverlay() { 
+    if (gameState.skill_points > 0) {
+        if (!confirm(`아직 ${gameState.skill_points}포인트의 스킬 포인트가 남았습니다.\n사용하지 않고 다음 스테이지로 진행하시겠습니까?\n(남은 포인트는 누적되어 다음 스테이지에서 사용 가능합니다)`)) {
+            return;
+        }
+    }
+    document.getElementById('stageclear-msg').style.display = 'none'; 
+}
 function resetGame() { location.reload(); }
 
 window.onload = () => { gameState = generateInitialState(); updateAndDraw(); };
