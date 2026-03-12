@@ -88,7 +88,13 @@ def get_adx(highs, lows, closes, n=14):
 
 # --- 초기 데이터 생성 ---
 def generate_initial_state():
-    state = {"day": 1, "money": 10000, "shares": 0, "avg_price": 0, "total_asset": 10000, "history": [], "trade_marks": []}
+    state = {
+        "day": 1, 
+        "money": 10000, 
+        "shares": 0, "avg_price": 0, "debt": 0,
+        "inv_shares": 0, "inv_avg_price": 0, "inv_debt": 0,
+        "total_asset": 10000, "history": [], "trade_marks": []
+    }
     price = random.randint(150, 400)
     for i in range(-7300, 1):
         o = price; c = max(10, o + random.randint(-15, 15))
@@ -110,6 +116,13 @@ def reset_game():
     global game_state
     game_state = generate_initial_state()
     return jsonify({"success": True})
+
+def calculate_total_asset():
+    price = game_state['price']
+    long_value = (game_state['shares'] * price) - game_state['debt']
+    # 인버스 가치 계산: (진입가 * 2 - 현재가) * 수량 - 부채
+    inv_value = (game_state['inv_shares'] * (2 * game_state['inv_avg_price'] - price)) - game_state['inv_debt'] if game_state['inv_shares'] > 0 else 0
+    return game_state['money'] + long_value + inv_value
 
 @app.route('/get_state')
 def get_state():
@@ -137,6 +150,8 @@ def get_state():
     for i, x in enumerate(hist):
         x.update({"ma5":m5[i], "ma20":m20[i], "ma60":m60[i], "bb_u":bu[i], "bb_l":bl[i], "macd":macd[i], "macd_s":ms[i], 
                   "st_k":sk[i], "st_d":sd[i], "rsi":rsi[i], "cci":cci[i], "ten":ten[i], "kij":kij[i], "sa":sa[i], "sb":sb[i], "pdi":pdi[i], "mdi":mdi[i], "adx":adx[i], "vma":vma[i]})
+    
+    game_state['total_asset'] = calculate_total_asset()
     return jsonify({**game_state, "display_history": hist})
 
 @app.route('/next_day')
@@ -147,27 +162,88 @@ def next_day():
         h = max(o, c) + random.randint(0, 15); l = max(10, min(o, c) - random.randint(0, 15))
         game_state['price'] = c
         game_state['history'].append({"day": game_state['day'], "open": o, "high": h, "low": l, "close": c, "vol": random.randint(500, 3000)})
-    game_state['total_asset'] = game_state['money'] + (game_state['shares'] * game_state['price'])
+    game_state['total_asset'] = calculate_total_asset()
     return get_state()
 
 @app.route('/buy')
 def buy():
     amount = int(request.args.get('amount', 1))
-    cost = game_state['price'] * amount
-    if game_state['money'] >= cost:
-        total_spent = (game_state['shares'] * game_state['avg_price']) + cost
-        game_state['money'] -= cost; game_state['shares'] += amount
+    lev = int(request.args.get('lev', 1))
+    total_cost = game_state['price'] * amount
+    required_cash = total_cost / lev
+    
+    if game_state['money'] >= required_cash:
+        borrowed = total_cost - required_cash
+        total_spent = (game_state['shares'] * game_state['avg_price']) + total_cost
+        game_state['money'] -= required_cash
+        game_state['debt'] += borrowed
+        game_state['shares'] += amount
         game_state['avg_price'] = total_spent / game_state['shares']
-        game_state['trade_marks'].append({"price": game_state['price'], "type": "buy"}); return jsonify({"success": True})
-    return jsonify({"success": False, "message": "잔액 부족"})
+        game_state['trade_marks'].append({"price": game_state['price'], "type": "buy"})
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "잔액 부족 (레버리지 포함)"})
 
 @app.route('/sell')
 def sell():
     amount = int(request.args.get('amount', 1))
     if game_state['shares'] >= amount:
-        game_state['money'] += game_state['price'] * amount; game_state['shares'] -= amount
-        if game_state['shares'] == 0: game_state['avg_price'] = 0
-        game_state['trade_marks'].append({"price": game_state['price'], "type": "sell"}); return jsonify({"success": True})
+        total_value = game_state['price'] * amount
+        repay_ratio = amount / game_state['shares']
+        repay_amount = game_state['debt'] * repay_ratio
+        
+        game_state['money'] += (total_value - repay_amount)
+        game_state['debt'] -= repay_amount
+        game_state['shares'] -= amount
+        
+        if game_state['shares'] == 0: 
+            game_state['avg_price'] = 0
+            game_state['debt'] = 0
+            
+        game_state['trade_marks'].append({"price": game_state['price'], "type": "sell"})
+        return jsonify({"success": True})
     return jsonify({"success": False, "message": "주식 부족"})
+
+@app.route('/buy_inv')
+def buy_inv():
+    amount = int(request.args.get('amount', 1))
+    lev = int(request.args.get('lev', 1))
+    total_cost = game_state['price'] * amount
+    required_cash = total_cost / lev
+    
+    if game_state['money'] >= required_cash:
+        borrowed = total_cost - required_cash
+        total_spent = (game_state['inv_shares'] * game_state['inv_avg_price']) + total_cost
+        game_state['money'] -= required_cash
+        game_state['inv_debt'] += borrowed
+        game_state['inv_shares'] += amount
+        game_state['inv_avg_price'] = total_spent / game_state['inv_shares']
+        game_state['trade_marks'].append({"price": game_state['price'], "type": "buy_inv"})
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "잔액 부족 (인버스 레버리지 포함)"})
+
+@app.route('/sell_inv')
+def sell_inv():
+    amount = int(request.args.get('amount', 1))
+    if game_state['inv_shares'] >= amount:
+        price = game_state['price']
+        # 인버스 가치: (진입가 + (진입가 - 현재가)) * 수량
+        entry_val = amount * game_state['inv_avg_price']
+        profit = amount * (game_state['inv_avg_price'] - price)
+        total_value = entry_val + profit
+        
+        repay_ratio = amount / game_state['inv_shares']
+        repay_amount = game_state['inv_debt'] * repay_ratio
+        
+        game_state['money'] += (total_value - repay_amount)
+        game_state['inv_debt'] -= repay_amount
+        game_state['inv_shares'] -= amount
+        
+        if game_state['inv_shares'] == 0: 
+            game_state['inv_avg_price'] = 0
+            game_state['inv_debt'] = 0
+            
+        game_state['trade_marks'].append({"price": game_state['price'], "type": "sell_inv"})
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "인버스 주식 부족"})
 
 if __name__ == '__main__': app.run(host='0.0.0.0', port=5000, debug=True)

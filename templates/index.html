@@ -9,7 +9,7 @@
         .game-board { background-color: white; border: 1px solid #ddd; padding: 10px; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
         h1 { color: #2c3e50; margin: 10px 0; font-size: 20px; }
         .dashboard { display: flex; justify-content: space-around; background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
-        .dashboard p { font-size: 18px; font-weight: 900; margin: 0; }
+        .dashboard p { font-size: 15px; font-weight: 900; margin: 0; }
         .dashboard span { color: #f1c40f; }
         .tool-group { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
         .btn-tool { padding: 8px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
@@ -19,21 +19,23 @@
         .tf-container { margin-bottom: 10px; display: flex; justify-content: center; gap: 5px; }
         .btn-tf { background: #bdc3c7; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
         .btn-tf.active { background: #2c3e50; color: white; }
-        #chart { width: 100%; height: 65vh; min-height: 400px; background-color: #fff; }
-        .trade-controls { margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+        #chart { width: 100%; height: 75vh; min-height: 550px; background-color: #fff; }
+        .trade-controls { margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; background: #eee; border-radius: 10px; }
         .amount-input { padding: 8px; font-size: 16px; width: 80px; text-align: center; border: 2px solid #3498db; border-radius: 5px; font-weight: bold; }
         button.trade { padding: 10px 15px; font-size: 14px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; }
+        .trade-section { display: flex; flex-direction: column; gap: 5px; border: 1px solid #ccc; padding: 10px; border-radius: 8px; background: white; }
+        .trade-section h3 { margin: 0 0 5px 0; font-size: 14px; }
         
         @media (max-width: 600px) {
-            .dashboard p { font-size: 14px; }
-            h1 { font-size: 18px; }
+            .dashboard p { font-size: 12px; }
+            h1 { font-size: 16px; }
             #chart { height: 50vh; }
         }
     </style>
 </head>
 <body>
     <div class="game-board">
-        <h1>📊 주식 시뮬레이터 (HTS 전문가 완성형)</h1>
+        <h1>📊 주식 시뮬레이터</h1>
         <div class="tool-group">
             <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동 모드</button>
             <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기 모드</button>
@@ -60,18 +62,48 @@
         <div id="chart"></div>
         <div class="dashboard">
             <p>💰 현금: $<span id="money">10000</span></p>
-            <p>🏷️ 평단가: $<span id="avg_price">0</span></p>
-            <p>📦 주식: <span id="shares">0</span>주</p>
-            <p>🏆 자산: $<span id="total_asset">10000</span></p>
+            <p>🏆 총자산: $<span id="total_asset">10000</span></p>
+            <p>📦 롱주식: <span id="shares">0</span>주 (평단:$<span id="avg_price">0</span>)</p>
+            <p>📉 인버스: <span id="inv_shares">0</span>주 (평단:$<span id="inv_avg_price">0</span>)</p>
+            <p>🏦 총부채: $<span id="total_debt">0</span></p>
         </div>
         <div class="trade-controls">
-            <input type="number" id="trade-amount" class="amount-input" value="1" min="1">
-            <button class="trade" style="background:#2ecc71;" onclick="trade('buy')">매수</button>
-            <button class="trade" style="background:#e74c3c;" onclick="trade('sell')">매도</button>
-            <button class="trade" style="background:#27ae60;" onclick="tradeAll('buy')">전액매수</button>
-            <button class="trade" style="background:#c0392b;" onclick="tradeAll('sell')">전액매도</button>
-            <button class="trade" style="background:#3498db;" onclick="nextDay(1)">1일 넘기기</button>
-            <button class="trade" style="background:#2980b9;" onclick="nextDay(7)">7일 넘기기 (1주일)</button>
+            <div style="width:100%; margin-bottom:10px;">
+                <span style="font-weight:bold; margin-right:10px;">레버리지 배수:</span>
+                <button class="btn-tf active lev-btn" onclick="setLev(1, this)">1x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(2, this)">2x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(3, this)">3x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(4, this)">4x</button>
+                <input type="number" id="trade-amount" class="amount-input" value="1" min="1" style="margin-left:20px;">
+            </div>
+            
+            <div class="trade-section">
+                <h3>📈 롱 (Long)</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#2ecc71;" onclick="trade('buy')">매수</button>
+                    <button class="trade" style="background:#e74c3c;" onclick="trade('sell')">매도</button>
+                    <button class="trade" style="background:#27ae60;" onclick="tradeAll('buy')">풀매수</button>
+                    <button class="trade" style="background:#c0392b;" onclick="tradeAll('sell')">풀매도</button>
+                </div>
+            </div>
+
+            <div class="trade-section">
+                <h3>📉 인버스 (Inverse)</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#3498db;" onclick="trade('buy_inv')">매수</button>
+                    <button class="trade" style="background:#9b59b6;" onclick="trade('sell_inv')">매도</button>
+                    <button class="trade" style="background:#2980b9;" onclick="tradeAll('buy_inv')">풀매수</button>
+                    <button class="trade" style="background:#8e44ad;" onclick="tradeAll('sell_inv')">풀매도</button>
+                </div>
+            </div>
+
+            <div class="trade-section">
+                <h3>⏳ 시간 진행</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#2c3e50;" onclick="nextDay(1)">+1일</button>
+                    <button class="trade" style="background:#34495e;" onclick="nextDay(7)">+7일</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -81,6 +113,13 @@
         let lastData = null;
         let currentRange = null;
         let currentDragMode = 'pan';
+        let selectedLev = 1;
+
+        function setLev(val, btn) {
+            selectedLev = val;
+            document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
 
         function setDragMode(mode) {
             currentDragMode = mode;
@@ -92,26 +131,50 @@
         function toggleInd(name, btn) { showInd[name] = !showInd[name]; btn.classList.toggle('on'); fetchState(); }
         function changeTF(tf) { 
             currentTF = tf; 
-            currentRange = null; // 타임프레임 변경 시 범위 초기화
+            currentRange = null; 
             document.querySelectorAll('.btn-tf').forEach(b => b.classList.remove('active')); 
             document.getElementById(tf).classList.add('active'); 
             fetchState(); 
         }
         function fetchState() { fetch(`/get_state?tf=${currentTF}`).then(r => r.json()).then(draw); }
         function resetGame() { if(confirm("초기화하시겠습니까?")) fetch('/reset_game').then(() => { currentRange = null; location.reload(); }); }
-        function undoLastShape() { const c = document.getElementById('chart'); if (c.layout.shapes) Plotly.relayout('chart', { shapes: c.layout.shapes.slice(0,-1) }); }
-        function clearShapes() { Plotly.relayout('chart', { shapes: [] }); }
+        
+        function undoLastShape() { 
+            const c = document.getElementById('chart'); 
+            if (c.layout && c.layout.shapes) {
+                const userShapes = c.layout.shapes.filter(s => s.xref !== 'paper');
+                if (userShapes.length > 0) {
+                    const lastUserShape = userShapes[userShapes.length - 1];
+                    const newShapes = c.layout.shapes.filter(s => s !== lastUserShape);
+                    Plotly.relayout('chart', { shapes: newShapes });
+                }
+            } 
+        }
+        function clearShapes() { 
+            const c = document.getElementById('chart');
+            if (c.layout && c.layout.shapes) {
+                const systemShapes = c.layout.shapes.filter(s => s.xref === 'paper');
+                Plotly.relayout('chart', { shapes: systemShapes });
+            }
+        }
 
         function trade(act) {
             const amt = document.getElementById('trade-amount').value;
-            fetch(`/${act}?amount=${amt}`).then(r => r.json()).then(res => { if(!res.success) alert(res.message); fetchState(); });
+            fetch(`/${act}?amount=${amt}&lev=${selectedLev}`).then(r => r.json()).then(res => { if(!res.success) alert(res.message); fetchState(); });
         }
 
         function tradeAll(act) {
             if(!lastData) return;
-            let amt = (act === 'buy') ? Math.floor(lastData.money / lastData.price) : lastData.shares;
+            let amt;
+            if (act === 'buy' || act === 'buy_inv') {
+                amt = Math.floor((lastData.money * selectedLev) / lastData.price);
+            } else if (act === 'sell') {
+                amt = lastData.shares;
+            } else if (act === 'sell_inv') {
+                amt = lastData.inv_shares;
+            }
             if(amt <= 0) return;
-            fetch(`/${act}?amount=${amt}`).then(r => r.json()).then(res => { if(!res.success) alert(res.message); fetchState(); });
+            fetch(`/${act}?amount=${amt}&lev=${selectedLev}`).then(r => r.json()).then(res => { if(!res.success) alert(res.message); fetchState(); });
         }
 
         function nextDay(days) { fetch(`/next_day?tf=${currentTF}&days=${days}`).then(r => r.json()).then(draw); }
@@ -120,14 +183,24 @@
             const chartDiv = document.getElementById('chart');
             lastData = data; const hist = data.display_history; const x = hist.map(h => h.label); const traces = []; const currentPrice = data.price;
             
-            traces.push({ x: x, open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', name: 'Price', increasing: {line:{color:'red'}}, decreasing: {line:{color:'blue'}}, yaxis: 'y' });
-            if(showInd.ma) { traces.push({x:x, y:hist.map(h=>h.ma5), name:'MA5', line:{color:'orange', width:1}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.ma20), name:'MA20', line:{color:'green', width:1}, yaxis:'y'}); }
-            if(showInd.bb) { traces.push({x:x, y:hist.map(h=>h.bb_u), name:'BB U', line:{color:'gray', dash:'dash'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.bb_l), name:'BB L', line:{color:'gray', dash:'dash'}, yaxis:'y'}); }
-            if(showInd.ichimoku) { traces.push({x:x, y:hist.map(h=>h.ten), name:'Tenkan', line:{color:'pink'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.kij), name:'Kijun', line:{color:'brown'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.sb), name:'Cloud', fill:'tonexty', fillcolor:'rgba(173,216,230,0.2)', line:{width:0}, yaxis:'y'}); }
+            traces.push({ x: x, open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', name: 'Price', increasing: {line:{color:'#ff3131', width: 1.5}}, decreasing: {line:{color:'#2196f3', width: 1.5}}, yaxis: 'y' });
+            if(showInd.ma) { 
+                traces.push({x:x, y:hist.map(h=>h.ma5), name:'MA5', line:{color:'#ff9800', width:2}, yaxis:'y'}); 
+                traces.push({x:x, y:hist.map(h=>h.ma20), name:'MA20', line:{color:'#4caf50', width:2}, yaxis:'y'}); 
+            }
+            if(showInd.bb) { 
+                traces.push({x:x, y:hist.map(h=>h.bb_u), name:'BB U', line:{color:'rgba(128,128,128,0.5)', width:1.5, dash:'dash'}, yaxis:'y'}); 
+                traces.push({x:x, y:hist.map(h=>h.bb_l), name:'BB L', line:{color:'rgba(128,128,128,0.5)', width:1.5, dash:'dash'}, yaxis:'y'}); 
+            }
+            if(showInd.ichimoku) { 
+                traces.push({x:x, y:hist.map(h=>h.ten), name:'Tenkan', line:{color:'#ff4081', width:1.5}, yaxis:'y'}); 
+                traces.push({x:x, y:hist.map(h=>h.kij), name:'Kijun', line:{color:'#795548', width:1.5}, yaxis:'y'}); 
+                traces.push({x:x, y:hist.map(h=>h.sb), name:'Cloud', fill:'tonexty', fillcolor:'rgba(0,188,212,0.1)', line:{width:0}, yaxis:'y'}); 
+            }
             
-            const subOrder = ['vol', 'macd', 'stoch', 'rsi', 'cci', 'adx']; const activeSubs = subOrder.filter(s => showInd[s]); const subCount = activeSubs.length; const subH = 0.08; const mainB = subCount === 0 ? 0 : subH * subCount + 0.05;
+            const subOrder = ['vol', 'macd', 'stoch', 'rsi', 'cci', 'adx']; const activeSubs = subOrder.filter(s => showInd[s]); const subCount = activeSubs.length; 
+            const subH = 0.15; const mainB = subCount === 0 ? 0 : (subH * subCount) + 0.02;
             
-            // 기존 줌/이동 상태 유지 로직
             let finalRange;
             if (currentRange) {
                 finalRange = currentRange;
@@ -136,36 +209,48 @@
                 finalRange = [x.length - viewCount, x.length - 1];
             }
 
-            const shapes = (chartDiv.layout && chartDiv.layout.shapes) ? [...chartDiv.layout.shapes.filter(s => s.editable)] : [];
+            const shapes = (chartDiv.layout && chartDiv.layout.shapes) ? [...chartDiv.layout.shapes.filter(s => s.editable !== false)] : [];
             shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: currentPrice, y1: currentPrice, line: { color: 'black', width: 2, dash: 'dash' }, editable: false });
             if (data.shares > 0) { shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: data.avg_price, y1: data.avg_price, line: { color: 'red', width: 2 }, editable: false }); }
+            if (data.inv_shares > 0) { shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: data.inv_avg_price, y1: data.inv_avg_price, line: { color: 'blue', width: 2 }, editable: false }); }
             
-            const annotations = [{ xref: 'paper', x: 1.05, yref: 'y', y: currentPrice, text: `$${currentPrice}`, showarrow: false, font: {color: 'black', weight: 'bold'} }];
-            if (data.shares > 0) { annotations.push({ xref: 'paper', x: 1.05, yref: 'y', y: data.avg_price, text: `평단: $${Math.floor(data.avg_price)}`, showarrow: false, font: {color: 'red', weight: 'bold'}, bgcolor: 'white' }); }
+            const annotations = [{ xref: 'paper', x: 1.01, yref: 'y', y: currentPrice, text: `<b>$${currentPrice}</b>`, showarrow: false, font: {color: 'white', size: 14}, bgcolor: 'black', borderpadding: 4 }];
+            if (data.shares > 0) { annotations.push({ xref: 'paper', x: 1.01, yref: 'y', y: data.avg_price, text: `<b>롱:$${Math.floor(data.avg_price)}</b>`, showarrow: false, font: {color: 'white', size: 12}, bgcolor: '#e74c3c', borderpadding: 4 }); }
+            if (data.inv_shares > 0) { annotations.push({ xref: 'paper', x: 1.01, yref: 'y', y: data.inv_avg_price, text: `<b>인:$${Math.floor(data.inv_avg_price)}</b>`, showarrow: false, font: {color: 'white', size: 12}, bgcolor: '#3498db', borderpadding: 4 }); }
             
             const layout = { 
                 grid: {rows: subCount + 1, columns: 1, roworder: 'top to bottom'}, 
-                yaxis: {domain: [mainB, 1], side: 'right', autorange: true, fixedrange: false}, 
-                xaxis: { 
-                    rangeslider: { visible: false }, 
-                    type: 'category', 
-                    range: finalRange 
-                }, 
+                yaxis: {domain: [mainB, 1], side: 'right', autorange: true, fixedrange: false, gridcolor: '#eee'}, 
+                xaxis: { rangeslider: { visible: false }, type: 'category', range: finalRange, gridcolor: '#eee' }, 
                 margin: {t: 30, b: 30, l: 30, r: 100}, 
                 showlegend: false,
                 shapes: shapes, 
                 annotations: annotations, 
                 dragmode: currentDragMode, 
-                newshape: {line: {color: 'red', width: 2}} 
+                newshape: {line: {color: 'red', width: 2}, editable: true} 
             };
 
-            activeSubs.forEach((sub, i) => { const yKey = 'y' + (i + 2); const start = i * subH; layout['yaxis' + (i + 2)] = {domain: [start, start + subH - 0.02], side: 'right', title: sub.toUpperCase(), fixedrange: true};
-                if(sub === 'vol') traces.push({x:x, y:hist.map(h=>h.vol), type:'bar', marker:{color:'gray'}, yaxis:yKey});
-                else if(sub === 'macd') { traces.push({x:x, y:hist.map(h=>h.macd), line:{color:'blue'}, yaxis:yKey}); traces.push({x:x, y:hist.map(h=>h.macd_s), line:{color:'orange'}, yaxis:yKey}); }
-                else if(sub === 'stoch') { traces.push({x:x, y:hist.map(h=>h.st_k), line:{color:'blue'}, yaxis:yKey}); traces.push({x:x, y:hist.map(h=>h.st_d), line:{color:'orange'}, yaxis:yKey}); }
-                else if(sub === 'rsi') { traces.push({x:x, y:hist.map(h=>h.rsi), line:{color:'purple', width:1.5}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>70), line:{color:'red', dash:'dot'}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>30), line:{color:'blue', dash:'dot'}, yaxis:yKey}); }
-                else if(sub === 'cci') { traces.push({x:x, y:hist.map(h=>h.cci), line:{color:'darkgreen', width:1.5}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>100), line:{color:'gray', dash:'dot'}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>-100), line:{color:'gray', dash:'dot'}, yaxis:yKey}); }
-                else if(sub === 'adx') traces.push({x:x, y:hist.map(h=>h.adx), line:{color:'black', width:2}, yaxis:yKey});
+            activeSubs.forEach((sub, i) => { const yKey = 'y' + (i + 2); const start = i * subH; layout['yaxis' + (i + 2)] = {domain: [start, start + subH - 0.02], side: 'right', title: {text: sub.toUpperCase(), font: {size: 12, weight: 'bold'}}, fixedrange: true, gridcolor: '#eee'};
+                if(sub === 'vol') traces.push({x:x, y:hist.map(h=>h.vol), type:'bar', marker:{color:'rgba(158,158,158,0.6)'}, yaxis:yKey});
+                else if(sub === 'macd') { 
+                    traces.push({x:x, y:hist.map(h=>h.macd), line:{color:'#2196f3', width:2}, yaxis:yKey}); 
+                    traces.push({x:x, y:hist.map(h=>h.macd_s), line:{color:'#ff9800', width:2}, yaxis:yKey}); 
+                }
+                else if(sub === 'stoch') { 
+                    traces.push({x:x, y:hist.map(h=>h.st_k), line:{color:'#2196f3', width:2}, yaxis:yKey}); 
+                    traces.push({x:x, y:hist.map(h=>h.st_d), line:{color:'#ff9800', width:2}, yaxis:yKey}); 
+                }
+                else if(sub === 'rsi') { 
+                    traces.push({x:x, y:hist.map(h=>h.rsi), line:{color:'#9c27b0', width:2.5}, yaxis:yKey}); 
+                    traces.push({x:x, y:x.map(()=>70), line:{color:'rgba(244,67,54,0.5)', width:1, dash:'dot'}, yaxis:yKey}); 
+                    traces.push({x:x, y:x.map(()=>30), line:{color:'rgba(33,150,243,0.5)', width:1, dash:'dot'}, yaxis:yKey}); 
+                }
+                else if(sub === 'cci') { 
+                    traces.push({x:x, y:hist.map(h=>h.cci), line:{color:'#009688', width:2.5}, yaxis:yKey}); 
+                    traces.push({x:x, y:x.map(()=>100), line:{color:'rgba(158,158,158,0.5)', width:1, dash:'dot'}, yaxis:yKey}); 
+                    traces.push({x:x, y:x.map(()=>-100), line:{color:'rgba(158,158,158,0.5)', width:1, dash:'dot'}, yaxis:yKey}); 
+                }
+                else if(sub === 'adx') traces.push({x:x, y:hist.map(h=>h.adx), line:{color:'#212121', width:2.5}, yaxis:yKey});
             });
 
             Plotly.react('chart', traces, layout, {displaylogo: false, editable: true, scrollZoom: true, responsive: true});
@@ -176,7 +261,13 @@
                 }
             });
 
-            document.getElementById('money').innerText = Math.floor(data.money); document.getElementById('avg_price').innerText = Math.floor(data.avg_price); document.getElementById('shares').innerText = data.shares; document.getElementById('total_asset').innerText = Math.floor(data.total_asset);
+            document.getElementById('money').innerText = Math.floor(data.money); 
+            document.getElementById('total_asset').innerText = Math.floor(data.total_asset);
+            document.getElementById('shares').innerText = data.shares; 
+            document.getElementById('avg_price').innerText = Math.floor(data.avg_price); 
+            document.getElementById('inv_shares').innerText = data.inv_shares; 
+            document.getElementById('inv_avg_price').innerText = Math.floor(data.inv_avg_price); 
+            document.getElementById('total_debt').innerText = Math.floor(data.debt + data.inv_debt);
         }
         window.onload = fetchState;
     </script>
