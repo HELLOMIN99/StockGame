@@ -6,7 +6,7 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; text-align: center; background-color: #f4f4f9; padding: 5px; margin: 0; }
-        .game-board { background-color: white; border: 1px solid #ddd; padding: 10px; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .game-board { background-color: white; border: 1px solid #ddd; padding: 10px; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; position: relative; }
         h1 { color: #2c3e50; margin: 10px 0; font-size: 20px; }
         .dashboard { display: flex; justify-content: space-around; background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
         .dashboard p { font-size: 15px; font-weight: 900; margin: 0; }
@@ -25,6 +25,8 @@
         button.trade { padding: 10px 15px; font-size: 14px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; }
         .trade-section { display: flex; flex-direction: column; gap: 5px; border: 1px solid #ccc; padding: 10px; border-radius: 8px; background: white; }
         .trade-section h3 { margin: 0 0 5px 0; font-size: 14px; }
+        .liquidation-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.7); color: white; display: none; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; z-index: 1000; }
+        .liquidation-overlay h2 { font-size: 40px; margin-bottom: 20px; }
         
         @media (max-width: 600px) {
             .dashboard p { font-size: 12px; }
@@ -35,7 +37,41 @@
 </head>
 <body>
     <div class="game-board">
+        <!-- 기존 청산 메시지 -->
+        <div id="liquidation-msg" class="liquidation-overlay">
+            <h2>🚨 강제 청산 발생! 🚨</h2>
+            <p style="font-size:20px;">자산이 60% 이상 하락하여 포지션이 강제 종료되었습니다.</p>
+            <button class="btn-tool" style="background:white; color:red; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">다시 시작하기</button>
+        </div>
+
+        <!-- 게임 오버 메시지 (기한 초과) -->
+        <div id="gameover-msg" class="liquidation-overlay" style="background: rgba(0,0,0,0.85);">
+            <h2>💀 MISSION FAILED 💀</h2>
+            <p style="font-size:22px;">스테이지 목표 금액 달성에 실패하였습니다.</p>
+            <p id="fail-reason" style="font-size:18px; color: #bdc3c7;"></p>
+            <button class="btn-tool" style="background:#e74c3c; color:white; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">처음부터 다시 도전</button>
+        </div>
+
+        <!-- 게임 클리어 메시지 -->
+        <div id="gameclear-msg" class="liquidation-overlay" style="background: rgba(46, 204, 113, 0.9);">
+            <h2>🎉 ALL STAGES CLEARED! 🎉</h2>
+            <p style="font-size:24px;">축하합니다! 모든 스테이지를 정복하고 시장의 전설이 되었습니다.</p>
+            <p id="clear-final-asset" style="font-size:20px; font-weight: bold;"></p>
+            <button class="btn-tool" style="background:white; color:#2ecc71; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">명예의 전당 (다시 시작)</button>
+        </div>
+
+        <!-- 스테이지 정보 창 -->
+        <div id="stage-display" style="position: absolute; top: 10px; right: 10px; background: rgba(44, 62, 80, 0.9); color: white; padding: 10px 15px; border-radius: 8px; text-align: left; z-index: 100; border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            <div style="font-size: 18px; font-weight: 900; color: #f1c40f; margin-bottom: 5px;">STAGE <span id="current-stage-num">1</span></div>
+            <div style="font-size: 14px;">목표: <span id="target-money" style="color: #2ecc71; font-weight: bold;">$25,000</span></div>
+            <div style="font-size: 14px;">남은 기간: <span id="remaining-days" style="color: #e74c3c; font-weight: bold;">7일</span></div>
+            <div style="margin-top: 5px; height: 6px; background: #555; border-radius: 3px; overflow: hidden;">
+                <div id="stage-progress-bar" style="width: 0%; height: 100%; background: #2ecc71; transition: width 0.3s;"></div>
+            </div>
+        </div>
+
         <h1>📊 주식 시뮬레이터</h1>
+
         <div class="tool-group">
             <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동 모드</button>
             <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기 모드</button>
@@ -63,17 +99,18 @@
         <div class="dashboard">
             <p>💰 현금: $<span id="money">10000</span></p>
             <p>🏆 총자산: $<span id="total_asset">10000</span></p>
-            <p>📦 롱주식: <span id="shares">0</span>주 (평단:$<span id="avg_price">0</span>)</p>
+            <p>📈 롱주식: <span id="shares">0</span>주 (평단:$<span id="avg_price">0</span>)</p>
             <p>📉 인버스: <span id="inv_shares">0</span>주 (평단:$<span id="inv_avg_price">0</span>)</p>
             <p>🏦 총부채: $<span id="total_debt">0</span></p>
         </div>
         <div class="trade-controls">
             <div style="width:100%; margin-bottom:10px;">
-                <span style="font-weight:bold; margin-right:10px;">레버리지 배수:</span>
+                <span style="font-weight:bold; margin-right:10px;">하이 레버리지:</span>
                 <button class="btn-tf active lev-btn" onclick="setLev(1, this)">1x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(2, this)">2x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(3, this)">3x</button>
-                <button class="btn-tf lev-btn" onclick="setLev(4, this)">4x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(10, this)" style="color:#e67e22;">10x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(20, this)" style="color:#e67e22;">20x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(30, this)" style="color:#e74c3c;">30x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(40, this)" style="color:#e74c3c;">40x</button>
                 <input type="number" id="trade-amount" class="amount-input" value="1" min="1" style="margin-left:20px;">
             </div>
             
@@ -180,6 +217,34 @@
         function nextDay(days) { fetch(`/next_day?tf=${currentTF}&days=${days}`).then(r => r.json()).then(draw); }
 
         function draw(data) {
+            // 게임 상태 오버레이 처리
+            document.getElementById('liquidation-msg').style.display = data.liquidated ? 'flex' : 'none';
+            document.getElementById('gameover-msg').style.display = data.game_over ? 'flex' : 'none';
+            document.getElementById('gameclear-msg').style.display = data.game_clear ? 'flex' : 'none';
+
+            if (data.game_over) {
+                document.getElementById('fail-reason').innerText = `최종 자산: $${Math.floor(data.total_asset)} / 목표: $${data.stage_info.target}`;
+            }
+            if (data.game_clear) {
+                document.getElementById('clear-final-asset').innerText = `최종 달성 자산: $${Math.floor(data.total_asset)}`;
+            }
+
+            // 스테이지 정보 업데이트
+            const stage = data.stage_info;
+            document.getElementById('current-stage-num').innerText = stage.stage;
+            document.getElementById('target-money').innerText = `$${stage.target.toLocaleString()}`;
+            
+            const remaining = stage.days - data.day;
+            document.getElementById('remaining-days').innerText = `${remaining}일`;
+            
+            // 프로그레스 바 계산 (이전 스테이지 기준일부터 현재까지)
+            const prevStageDays = data.current_stage_idx > 0 ? data.stages[data.current_stage_idx-1].days : 0;
+            const totalStageDuration = stage.days - prevStageDays;
+            const elapsedInStage = data.day - prevStageDays;
+            const progressPercent = Math.min(100, (elapsedInStage / totalStageDuration) * 100);
+            document.getElementById('stage-progress-bar').style.width = `${progressPercent}%`;
+            document.getElementById('stage-progress-bar').style.background = remaining <= 2 ? '#e74c3c' : '#2ecc71';
+
             const chartDiv = document.getElementById('chart');
             lastData = data; const hist = data.display_history; const x = hist.map(h => h.label); const traces = []; const currentPrice = data.price;
             
