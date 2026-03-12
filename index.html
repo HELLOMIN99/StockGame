@@ -11,17 +11,17 @@
     <div class="game-board">
         <!-- 오버레이 메시지 (기존 동일) -->
         <div id="stage-intro-msg" class="liquidation-overlay" style="display:none; z-index: 4000;">
-            <div class="msg-box neon-border" style="text-align: center; background: rgba(10, 11, 16, 0.95); padding: 30px; border-radius: 20px;">
+            <div class="intro-box neon-border">
                 <h2 id="intro-stage-num" style="color:var(--neon-blue); font-size: 1.2rem; margin:0;">STAGE 1</h2>
-                <h1 id="intro-stage-name" style="margin: 15px 0; font-size: 2.2rem; text-shadow: 0 0 15px var(--neon-blue);">튜토리얼: 첫 도약</h1>
-                <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin: 25px 0; border: 1px solid rgba(255,255,255,0.1);">
+                <h1 id="intro-stage-name" class="intro-stage-name">튜토리얼: 첫 도약</h1>
+                <div class="intro-info-card" style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin: 25px 0; border: 1px solid rgba(255,255,255,0.1);">
                     <p style="margin-bottom: 10px; opacity: 0.8; font-size: 0.9rem;">목표 자산</p>
-                    <h2 id="intro-target" style="color:var(--neon-green); font-size: 2.2rem; margin:0;">$150,000</h2>
+                    <h2 id="intro-target" class="intro-target-val">$150,000</h2>
                     <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
                     <p style="margin-bottom: 5px; opacity: 0.8; font-size: 0.9rem;">제한 시간</p>
                     <h3 id="intro-days" style="color:var(--neon-red); font-size: 1.5rem; margin:0;">25일</h3>
                 </div>
-                <button onclick="startStage()" class="trade btn-buy" style="width:100%; height: 65px; font-size: 1.6rem; font-weight: 900; cursor: pointer; border-radius: 10px; box-shadow: 0 0 20px rgba(46,204,113,0.3);">투자 시작</button>
+                <button onclick="startStage()" class="trade btn-buy intro-start-btn" style="width:100%; height: 65px; font-size: 1.6rem; font-weight: 900; cursor: pointer; border-radius: 10px; box-shadow: 0 0 20px rgba(46,204,113,0.3);">투자 시작</button>
             </div>
         </div>
         <div id="liquidation-msg" class="liquidation-overlay" style="display:none;">
