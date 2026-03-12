@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주식 시뮬레이터</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-board">
+        <!-- 기존 청산 메시지 -->
+        <div id="liquidation-msg" class="liquidation-overlay">
+            <h2>🚨 강제 청산 발생! 🚨</h2>
+            <p style="font-size:20px;">자산이 60% 이상 하락하여 포지션이 강제 종료되었습니다.</p>
+            <button class="btn-tool" style="background:white; color:red; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">다시 시작하기</button>
+        </div>
+
+        <!-- 게임 오버 메시지 (기한 초과) -->
+        <div id="gameover-msg" class="liquidation-overlay" style="background: rgba(0,0,0,0.85);">
+            <h2>💀 MISSION FAILED 💀</h2>
+            <p style="font-size:22px;">스테이지 목표 금액 달성에 실패하였습니다.</p>
+            <p id="fail-reason" style="font-size:18px; color: #bdc3c7;"></p>
+            <button class="btn-tool" style="background:#e74c3c; color:white; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">처음부터 다시 도전</button>
+        </div>
+
+        <!-- 게임 클리어 메시지 -->
+        <div id="gameclear-msg" class="liquidation-overlay" style="background: rgba(46, 204, 113, 0.9);">
+            <h2>🎉 ALL STAGES CLEARED! 🎉</h2>
+            <p style="font-size:24px;">축하합니다! 모든 스테이지를 정복하고 시장의 전설이 되었습니다.</p>
+            <p id="clear-final-asset" style="font-size:20px; font-weight: bold;"></p>
+            <button class="btn-tool" style="background:white; color:#2ecc71; margin-top:20px; font-size:20px; padding:15px 30px;" onclick="resetGame()">명예의 전당 (다시 시작)</button>
+        </div>
+
+        <!-- 스테이지 정보 창 -->
+        <div id="stage-display" class="stage-container">
+            <div class="stage-title">STAGE <span id="current-stage-num">1</span></div>
+            <div class="stage-info">목표: <span id="target-money" class="target-val">$25,000</span></div>
+            <div class="stage-info">남은 기간: <span id="remaining-days" class="days-val">7일</span></div>
+            <div class="progress-container">
+                <div id="stage-progress-bar" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <h1>📊 주식 시뮬레이터</h1>
+
+        <div class="tool-group">
+            <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동</button>
+            <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기</button>
+            <button class="btn-tool" style="background:#e67e22; color:white;" onclick="undoLastShape()">↩️ 취소</button>
+            <button class="btn-tool" style="background:#6c757d; color:white;" onclick="clearShapes()">🧹 지우기</button>
+            <button class="btn-tool" style="background:#34495e; color:white;" onclick="resetGame()">🆕 리셋</button>
+        </div>
+        <div class="indicator-menu">
+            <button class="btn-ind on" onclick="toggleInd('ma', this)">이평선</button>
+            <button class="btn-ind" onclick="toggleInd('bb', this)">볼린저밴드</button>
+            <button class="btn-ind" onclick="toggleInd('ichimoku', this)">일목균형표</button>
+            <button class="btn-ind" onclick="toggleInd('vol', this)">거래량</button>
+            <button class="btn-ind" onclick="toggleInd('macd', this)">MACD</button>
+            <button class="btn-ind" onclick="toggleInd('stoch', this)">스토캐스틱</button>
+            <button class="btn-ind" onclick="toggleInd('rsi', this)">RSI</button>
+            <button class="btn-ind" onclick="toggleInd('cci', this)">CCI</button>
+            <button class="btn-ind" onclick="toggleInd('adx', this)">DMI/ADX</button>
+        </div>
+        <div class="tf-container">
+            <button class="btn-tf active" id="daily" onclick="changeTF('daily')">일봉</button>
+            <button class="btn-tf" id="monthly" onclick="changeTF('monthly')">월봉</button>
+            <button class="btn-tf" id="yearly" onclick="changeTF('yearly')">년봉</button>
+        </div>
+        <div id="chart"></div>
+        <div class="dashboard">
+            <p>💰 현금: $<span id="money">10000</span></p>
+            <p>🏆 총자산: $<span id="total_asset">10000</span></p>
+            <p>📈 롱주식: <span id="shares">0</span>주 (평단:$<span id="avg_price">0</span>)</p>
+            <p>📉 인버스: <span id="inv_shares">0</span>주 (평단:$<span id="inv_avg_price">0</span>)</p>
+            <p>🏦 총부채: $<span id="total_debt">0</span></p>
+        </div>
+        <div class="trade-controls">
+            <div style="width:100%; margin-bottom:10px;">
+                <span style="font-weight:bold; margin-right:10px;">하이 레버리지:</span>
+                <button class="btn-tf active lev-btn" onclick="setLev(1, this)">1x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(10, this)" style="color:#e67e22;">10x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(20, this)" style="color:#e67e22;">20x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(30, this)" style="color:#e74c3c;">30x</button>
+                <button class="btn-tf lev-btn" onclick="setLev(40, this)" style="color:#e74c3c;">40x</button>
+                <input type="number" id="trade-amount" class="amount-input" value="1" min="1" style="margin-left:20px;">
+            </div>
+            
+            <div class="trade-section">
+                <h3>📈 롱 (Long)</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#2ecc71;" onclick="trade('buy')">매수</button>
+                    <button class="trade" style="background:#e74c3c;" onclick="trade('sell')">매도</button>
+                    <button class="trade" style="background:#27ae60;" onclick="tradeAll('buy')">풀매수</button>
+                    <button class="trade" style="background:#c0392b;" onclick="tradeAll('sell')">풀매도</button>
+                </div>
+            </div>
+
+            <div class="trade-section">
+                <h3>📉 인버스 (Inverse)</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#3498db;" onclick="trade('buy_inv')">매수</button>
+                    <button class="trade" style="background:#9b59b6;" onclick="trade('sell_inv')">매도</button>
+                    <button class="trade" style="background:#2980b9;" onclick="tradeAll('buy_inv')">풀매수</button>
+                    <button class="trade" style="background:#8e44ad;" onclick="tradeAll('sell_inv')">풀매도</button>
+                </div>
+            </div>
+
+            <div class="trade-section">
+                <h3>⏳ 시간 진행</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="trade" style="background:#2c3e50;" onclick="nextDay(1)">+1일</button>
+                    <button class="trade" style="background:#34495e;" onclick="nextDay(7)">+7일</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
