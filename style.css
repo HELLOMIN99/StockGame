@@ -207,7 +207,7 @@ h1 {
     .news-history-panel, .stage-container { flex: 1; }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     body { padding: 5px; }
     .game-board { padding: 10px; border-radius: 15px; }
     h1 { font-size: 18px; letter-spacing: 3px; }
@@ -215,7 +215,7 @@ h1 {
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; padding: 10px; gap: 8px; }
     .stat-group { flex-direction: column; gap: 4px; }
     
-    .side-panel { display: none; } /* Hide side panel on mobile */
+    .side-panel { display: none !important; } /* 데스크톱용 사이드바 숨김 */
     
     #chart { height: 35vh; min-height: 250px; }
     
