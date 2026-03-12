@@ -5,30 +5,38 @@
     <title>HTS 시뮬레이터 Pro Final</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; text-align: center; background-color: #f4f4f9; padding: 10px; margin: 0; }
-        .game-board { background-color: white; border: 1px solid #ddd; padding: 20px; width: 1400px; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; margin: 10px 0; font-size: 24px; }
-        .dashboard { display: flex; justify-content: space-around; background: #2c3e50; color: white; padding: 25px; border-radius: 12px; margin-top: 15px; }
-        .dashboard p { font-size: 32px; font-weight: 900; margin: 0; }
+        body { font-family: 'Malgun Gothic', sans-serif; text-align: center; background-color: #f4f4f9; padding: 5px; margin: 0; }
+        .game-board { background-color: white; border: 1px solid #ddd; padding: 10px; width: 100%; max-width: 1400px; margin: 0 auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; }
+        h1 { color: #2c3e50; margin: 10px 0; font-size: 20px; }
+        .dashboard { display: flex; justify-content: space-around; background: #2c3e50; color: white; padding: 15px; border-radius: 12px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
+        .dashboard p { font-size: 18px; font-weight: 900; margin: 0; }
         .dashboard span { color: #f1c40f; }
-        .tool-group { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: inline-flex; gap: 10px; }
-        .btn-tool { padding: 8px 20px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .tool-group { background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+        .btn-tool { padding: 8px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .indicator-menu { margin-bottom: 10px; display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
-        .btn-ind { padding: 6px 12px; font-size: 12px; background: #fff; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-ind { padding: 6px 10px; font-size: 11px; background: #fff; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .btn-ind.on { background: #f39c12; color: white; border-color: #e67e22; }
-        .tf-container { margin-bottom: 15px; display: flex; justify-content: center; gap: 10px; }
-        .btn-tf { background: #bdc3c7; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .tf-container { margin-bottom: 10px; display: flex; justify-content: center; gap: 5px; }
+        .btn-tf { background: #bdc3c7; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
         .btn-tf.active { background: #2c3e50; color: white; }
-        #chart { width: 100%; height: 850px; background-color: #fff; }
-        .trade-controls { margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .amount-input { padding: 10px; font-size: 20px; width: 100px; text-align: center; border: 2px solid #3498db; border-radius: 5px; font-weight: bold; }
-        button.trade { padding: 15px 25px; font-size: 18px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; }
+        #chart { width: 100%; height: 65vh; min-height: 400px; background-color: #fff; }
+        .trade-controls { margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .amount-input { padding: 8px; font-size: 16px; width: 80px; text-align: center; border: 2px solid #3498db; border-radius: 5px; font-weight: bold; }
+        button.trade { padding: 10px 15px; font-size: 14px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; }
+        
+        @media (max-width: 600px) {
+            .dashboard p { font-size: 14px; }
+            h1 { font-size: 18px; }
+            #chart { height: 50vh; }
+        }
     </style>
 </head>
 <body>
     <div class="game-board">
         <h1>📊 주식 시뮬레이터 (HTS 전문가 완성형)</h1>
         <div class="tool-group">
+            <button class="btn-tool" id="btn-pan" style="background:#2980b9; color:white;" onclick="setDragMode('pan')">🖐️ 이동 모드</button>
+            <button class="btn-tool" id="btn-draw" style="background:#7f8c8d; color:white;" onclick="setDragMode('drawline')">✏️ 선긋기 모드</button>
             <button class="btn-tool" style="background:#e67e22; color:white;" onclick="undoLastShape()">↩️ 마지막 선 취소</button>
             <button class="btn-tool" style="background:#6c757d; color:white;" onclick="clearShapes()">🧹 모든 선 지우기</button>
             <button class="btn-tool" style="background:#34495e; color:white;" onclick="resetGame()">🆕 새 차트로 리셋</button>
@@ -71,11 +79,26 @@
         let currentTF = 'daily';
         let showInd = { ma: true, bb: false, ichimoku: false, vol: false, macd: false, stoch: false, rsi: false, cci: false, adx: false };
         let lastData = null;
+        let currentRange = null;
+        let currentDragMode = 'pan';
+
+        function setDragMode(mode) {
+            currentDragMode = mode;
+            Plotly.relayout('chart', { dragmode: mode });
+            document.getElementById('btn-pan').style.background = (mode === 'pan') ? '#2980b9' : '#7f8c8d';
+            document.getElementById('btn-draw').style.background = (mode === 'drawline') ? '#e74c3c' : '#7f8c8d';
+        }
 
         function toggleInd(name, btn) { showInd[name] = !showInd[name]; btn.classList.toggle('on'); fetchState(); }
-        function changeTF(tf) { currentTF = tf; document.querySelectorAll('.btn-tf').forEach(b => b.classList.remove('active')); document.getElementById(tf).classList.add('active'); fetchState(); }
+        function changeTF(tf) { 
+            currentTF = tf; 
+            currentRange = null; // 타임프레임 변경 시 범위 초기화
+            document.querySelectorAll('.btn-tf').forEach(b => b.classList.remove('active')); 
+            document.getElementById(tf).classList.add('active'); 
+            fetchState(); 
+        }
         function fetchState() { fetch(`/get_state?tf=${currentTF}`).then(r => r.json()).then(draw); }
-        function resetGame() { if(confirm("초기화하시겠습니까?")) fetch('/reset_game').then(() => location.reload()); }
+        function resetGame() { if(confirm("초기화하시겠습니까?")) fetch('/reset_game').then(() => { currentRange = null; location.reload(); }); }
         function undoLastShape() { const c = document.getElementById('chart'); if (c.layout.shapes) Plotly.relayout('chart', { shapes: c.layout.shapes.slice(0,-1) }); }
         function clearShapes() { Plotly.relayout('chart', { shapes: [] }); }
 
@@ -94,19 +117,48 @@
         function nextDay(days) { fetch(`/next_day?tf=${currentTF}&days=${days}`).then(r => r.json()).then(draw); }
 
         function draw(data) {
+            const chartDiv = document.getElementById('chart');
             lastData = data; const hist = data.display_history; const x = hist.map(h => h.label); const traces = []; const currentPrice = data.price;
+            
             traces.push({ x: x, open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', name: 'Price', increasing: {line:{color:'red'}}, decreasing: {line:{color:'blue'}}, yaxis: 'y' });
             if(showInd.ma) { traces.push({x:x, y:hist.map(h=>h.ma5), name:'MA5', line:{color:'orange', width:1}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.ma20), name:'MA20', line:{color:'green', width:1}, yaxis:'y'}); }
             if(showInd.bb) { traces.push({x:x, y:hist.map(h=>h.bb_u), name:'BB U', line:{color:'gray', dash:'dash'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.bb_l), name:'BB L', line:{color:'gray', dash:'dash'}, yaxis:'y'}); }
             if(showInd.ichimoku) { traces.push({x:x, y:hist.map(h=>h.ten), name:'Tenkan', line:{color:'pink'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.kij), name:'Kijun', line:{color:'brown'}, yaxis:'y'}); traces.push({x:x, y:hist.map(h=>h.sb), name:'Cloud', fill:'tonexty', fillcolor:'rgba(173,216,230,0.2)', line:{width:0}, yaxis:'y'}); }
+            
             const subOrder = ['vol', 'macd', 'stoch', 'rsi', 'cci', 'adx']; const activeSubs = subOrder.filter(s => showInd[s]); const subCount = activeSubs.length; const subH = 0.08; const mainB = subCount === 0 ? 0 : subH * subCount + 0.05;
-            let viewCount = (currentTF === 'daily') ? 60 : (currentTF === 'monthly' ? 24 : 12);
-            const shapes = (document.getElementById('chart').layout && document.getElementById('chart').layout.shapes) ? [...document.getElementById('chart').layout.shapes.filter(s => s.editable)] : [];
+            
+            // 기존 줌/이동 상태 유지 로직
+            let finalRange;
+            if (currentRange) {
+                finalRange = currentRange;
+            } else {
+                let viewCount = (currentTF === 'daily') ? 60 : (currentTF === 'monthly' ? 24 : 12);
+                finalRange = [x.length - viewCount, x.length - 1];
+            }
+
+            const shapes = (chartDiv.layout && chartDiv.layout.shapes) ? [...chartDiv.layout.shapes.filter(s => s.editable)] : [];
             shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: currentPrice, y1: currentPrice, line: { color: 'black', width: 2, dash: 'dash' }, editable: false });
             if (data.shares > 0) { shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: data.avg_price, y1: data.avg_price, line: { color: 'red', width: 2 }, editable: false }); }
+            
             const annotations = [{ xref: 'paper', x: 1.05, yref: 'y', y: currentPrice, text: `$${currentPrice}`, showarrow: false, font: {color: 'black', weight: 'bold'} }];
             if (data.shares > 0) { annotations.push({ xref: 'paper', x: 1.05, yref: 'y', y: data.avg_price, text: `평단: $${Math.floor(data.avg_price)}`, showarrow: false, font: {color: 'red', weight: 'bold'}, bgcolor: 'white' }); }
-            const layout = { grid: {rows: subCount + 1, columns: 1, roworder: 'top to bottom'}, yaxis: {domain: [mainB, 1], side: 'right', autorange: true, fixedrange: false}, xaxis: { rangeslider: { visible: true, thickness: 0.03, yaxis: { rangemode: 'fixed' } }, type: 'category', range: [x.length-viewCount, x.length-1] }, margin: {t: 30, b: 30, l: 30, r: 100}, showlegend: false, height: 850, shapes: shapes, annotations: annotations, dragmode: 'drawline', newshape: {line: {color: 'red', width: 2}} };
+            
+            const layout = { 
+                grid: {rows: subCount + 1, columns: 1, roworder: 'top to bottom'}, 
+                yaxis: {domain: [mainB, 1], side: 'right', autorange: true, fixedrange: false}, 
+                xaxis: { 
+                    rangeslider: { visible: false }, 
+                    type: 'category', 
+                    range: finalRange 
+                }, 
+                margin: {t: 30, b: 30, l: 30, r: 100}, 
+                showlegend: false,
+                shapes: shapes, 
+                annotations: annotations, 
+                dragmode: currentDragMode, 
+                newshape: {line: {color: 'red', width: 2}} 
+            };
+
             activeSubs.forEach((sub, i) => { const yKey = 'y' + (i + 2); const start = i * subH; layout['yaxis' + (i + 2)] = {domain: [start, start + subH - 0.02], side: 'right', title: sub.toUpperCase(), fixedrange: true};
                 if(sub === 'vol') traces.push({x:x, y:hist.map(h=>h.vol), type:'bar', marker:{color:'gray'}, yaxis:yKey});
                 else if(sub === 'macd') { traces.push({x:x, y:hist.map(h=>h.macd), line:{color:'blue'}, yaxis:yKey}); traces.push({x:x, y:hist.map(h=>h.macd_s), line:{color:'orange'}, yaxis:yKey}); }
@@ -115,8 +167,15 @@
                 else if(sub === 'cci') { traces.push({x:x, y:hist.map(h=>h.cci), line:{color:'darkgreen', width:1.5}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>100), line:{color:'gray', dash:'dot'}, yaxis:yKey}); traces.push({x:x, y:x.map(()=>-100), line:{color:'gray', dash:'dot'}, yaxis:yKey}); }
                 else if(sub === 'adx') traces.push({x:x, y:hist.map(h=>h.adx), line:{color:'black', width:2}, yaxis:yKey});
             });
-            // [핵심] scrollZoom: true 추가
-            Plotly.react('chart', traces, layout, {displaylogo: false, editable: true, scrollZoom: true});
+
+            Plotly.react('chart', traces, layout, {displaylogo: false, editable: true, scrollZoom: true, responsive: true});
+            
+            chartDiv.on('plotly_relayout', function(eventData) {
+                if (eventData['xaxis.range[0]'] !== undefined) {
+                    currentRange = [eventData['xaxis.range[0]'], eventData['xaxis.range[1]']];
+                }
+            });
+
             document.getElementById('money').innerText = Math.floor(data.money); document.getElementById('avg_price').innerText = Math.floor(data.avg_price); document.getElementById('shares').innerText = data.shares; document.getElementById('total_asset').innerText = Math.floor(data.total_asset);
         }
         window.onload = fetchState;

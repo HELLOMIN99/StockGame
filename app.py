@@ -41,12 +41,12 @@ def get_cci(highs, lows, closes, n=14):
         cci.append((tp[i] - sma_tp[i]) / (0.015 * avg_dev) if avg_dev != 0 else 0)
     return cci
 
-def get_bollinger(prices, n=20, k=2):
+def get_bollinger(prices, n=20, k=1.5):
     sma = get_sma(prices, n); upper, lower = [], []
     for i in range(len(prices)):
         if i < n-1: upper.append(None); lower.append(None); continue
-        slice_p = prices[i-n+1:i+1]; std = math.sqrt(sum((x - prices[i])**2 for x in slice_p) / n)
-        upper.append(prices[i] + k * std); lower.append(prices[i] - k * std)
+        slice_p = prices[i-n+1:i+1]; std = math.sqrt(sum((x - sma[i])**2 for x in slice_p) / n)
+        upper.append(sma[i] + k * std); lower.append(sma[i] - k * std)
     return upper, lower
 
 def get_macd(prices, fast=12, slow=26, signal=9):
