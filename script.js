@@ -40,28 +40,28 @@ function changeTF(tf) {
 function setLev(v, btn) { selectedLev = v; document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
 function setDragMode(m) { currentDragMode = m; Plotly.relayout('chart', { dragmode: m }); }
 
-// --- 20단계 스테이지 설정 ---
+// --- 20단계 스테이지 설정 (시작 자산 $50,000 기준 재설계) ---
 const STAGES = [
-    { stage: 1, days: 22, target: 30000, name: "튜토리얼" },
-    { stage: 2, days: 45, target: 100000, name: "기초 자산" },
-    { stage: 3, days: 70, target: 300000, name: "종잣돈 마련" },
-    { stage: 4, days: 100, target: 1000000, name: "슈퍼 개미" },
-    { stage: 5, days: 150, target: 3000000, name: "프로 투자자" },
-    { stage: 6, days: 200, target: 10000000, name: "자산가" },
-    { stage: 7, days: 300, target: 50000000, name: "자본가" },
-    { stage: 8, days: 450, target: 200000000, name: "큰 손" },
-    { stage: 9, days: 600, target: 1000000000, name: "억만장자" },
-    { stage: 10, days: 800, target: 5000000000, name: "유니콘" },
-    { stage: 11, days: 1000, target: 20000000000, name: "데카콘" },
-    { stage: 12, days: 1300, target: 100000000000, name: "재벌" },
-    { stage: 13, days: 1600, target: 500000000000, name: "시장 지배자" },
-    { stage: 14, days: 2000, target: 2000000000000, name: "조 단위 부호" },
-    { stage: 15, days: 2500, target: 10000000000000, name: "국가급 부호" },
-    { stage: 16, days: 3000, target: 50000000000000, name: "대륙급 부호" },
-    { stage: 17, days: 3600, target: 200000000000000, name: "행성급 부호" },
-    { stage: 18, days: 4300, target: 1000000000000000, name: "은하급 부호" },
-    { stage: 19, days: 5100, target: 5000000000000000, name: "우주급 부호" },
-    { stage: 20, days: 6000, target: 10000000000000000, name: "투자의 신" }
+    { stage: 1, days: 25, target: 150000, name: "튜토리얼: 첫 도약" },
+    { stage: 2, days: 50, target: 400000, name: "기초 자산 형성" },
+    { stage: 3, days: 80, target: 1000000, name: "백만 달러의 꿈" },
+    { stage: 4, days: 120, target: 3000000, name: "슈퍼 개미의 탄생" },
+    { stage: 5, days: 180, target: 10000000, name: "프로 투자자" },
+    { stage: 6, days: 250, target: 30000000, name: "자산가로 가는 길" },
+    { stage: 7, days: 350, target: 100000000, name: "억대 자산가" },
+    { stage: 8, days: 500, target: 300000000, name: "지역구 큰 손" },
+    { stage: 9, days: 700, target: 1000000000, name: "유니콘 투자자" },
+    { stage: 10, days: 900, target: 5000000000, name: "시장 지배자" },
+    { stage: 11, days: 1200, target: 20000000000, name: "데카콘 기업주" },
+    { stage: 12, days: 1500, target: 100000000000, name: "재벌가" },
+    { stage: 13, days: 1800, target: 500000000000, name: "국가급 부호" },
+    { stage: 14, days: 2200, target: 2000000000000, name: "조 단위 거부" },
+    { stage: 15, days: 2700, target: 10000000000000, name: "대륙급 거물" },
+    { stage: 16, days: 3300, target: 50000000000000, name: "지구의 주인" },
+    { stage: 17, days: 4000, target: 200000000000000, name: "행성급 부호" },
+    { stage: 18, days: 4800, target: 1000000000000000, name: "은하급 거부" },
+    { stage: 19, days: 5700, target: 5000000000000000, name: "우주의 제왕" },
+    { stage: 20, days: 6800, target: 10000000000000000, name: "투자의 신 (완성)" }
 ];
 
 // --- 100가지 랜덤 뉴스 풀 (대표 항목) ---
@@ -109,20 +109,32 @@ function showFloatingText(text, isPositive) {
 
 function generateInitialState() {
     let s = {
-        day: 1, money: 10000, shares: 0, avg_price: 0, debt: 0,
-        inv_shares: 0, inv_avg_price: 0, inv_debt: 0, total_asset: 10000, history: [],
+        day: 1, money: 50000, shares: 0, avg_price: 0, debt: 0,
+        inv_shares: 0, inv_avg_price: 0, inv_debt: 0, total_asset: 50000, history: [],
         current_stage_idx: 0, game_over: false, news_history: [], skill_points: 0, 
         skills: { insight: 0, risk: 0, credit: 0 },
         items: { time_stopper: 0, money_washer: 0, future_vision: 0, news_manipulator: 0 },
         time_stopper_days: 0, active_news: null, news_remaining: 0
     };
-    let price = Math.floor(Math.random() * 601) + 200;
-    for (let i = -7500; i <= 0; i++) {
-        let o = price, c = Math.max(10, o + (Math.floor(Math.random() * 41) - 20));
-        let h = Math.max(o, c) + Math.floor(Math.random() * 15), l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 15));
-        s.history.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1000) + 500 }); price = c;
+    
+    // 1. 딱 시작했을 때의 현재가 결정 ($800 ~ $1200)
+    const startPrice = Math.floor(Math.random() * 401) + 800; 
+    let current = startPrice;
+    let tempHistory = [];
+
+    // 2. 현재가로부터 거꾸로 7500일간의 히스토리 생성 (역산)
+    for (let i = 0; i >= -7500; i--) {
+        let c = current;
+        let o = Math.max(10, c - (Math.floor(Math.random() * 41) - 20));
+        let h = Math.max(o, c) + Math.floor(Math.random() * 15);
+        let l = Math.max(10, Math.min(o, c) - Math.floor(Math.random() * 15));
+        tempHistory.push({ day: i, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 1000) + 500 });
+        current = o;
     }
-    s.price = price; return s;
+    
+    s.history = tempHistory.reverse();
+    s.price = startPrice;
+    return s;
 }
 
 function nextDay(days) {
@@ -137,6 +149,11 @@ function nextDay(days) {
             document.getElementById('fail-reason').innerText = `제한 시간(${stage.days}일)이 초과되었습니다. 목표 금액($${stage.target.toLocaleString()}) 달성 실패!`;
             document.getElementById('gameover-msg').style.display = 'flex';
             break;
+        }
+
+        // 3일 전 경고 알림 (현금화 독려)
+        if (stage.days - gameState.day === 3) {
+            alert(`⚠️ 스테이지 종료 3일 전입니다!\n\n목표 달성을 위해 보유 중인 주식을 모두 매도하여 현금화하시기 바랍니다.\n(미실현 손익은 클리어 조건에 포함되지 않습니다)`);
         }
 
         if (gameState.news_remaining > 0) { gameState.news_remaining--; if (gameState.news_remaining === 0) gameState.active_news = null; }
@@ -158,11 +175,16 @@ function nextDay(days) {
             if (gameState.active_news) {
                 let n = gameState.active_news;
                 if (n.effect === 'bull') change = Math.floor(Math.random() * (25 * n.intensity));
-                else if (n.effect === 'bear') change = -Math.floor(Math.random() * (20 * n.intensity));
+                else if (n.effect === 'bear') {
+                    // 주가가 낮을 때는 하락폭을 제한하여 바닥 고착화 방지
+                    let dropLimit = (gameState.price < 200) ? 0.5 : 1.0;
+                    change = -Math.floor(Math.random() * (20 * n.intensity * dropLimit));
+                }
             }
-            // 바닥권(50원 미만) 기술적 반등 로직
-            if (gameState.price < 50) {
-                change += Math.floor(Math.random() * 15) + 5; 
+            // 바닥권 탈출 엔진: 가격이 낮을수록 위로 쏘아 올리는 힘이 강력해짐
+            if (gameState.price < 150) {
+                let thrust = (150 - gameState.price) / 2; // 가격이 낮을수록 커짐
+                change += Math.floor(Math.random() * 20) + thrust; 
             }
         }
         let o = gameState.price, c = Math.max(10, o + change);
@@ -202,18 +224,22 @@ function handleTrade(act) { trade(currentTradeMode === 'long' ? act : act + '_in
 function handleTradeAll(a) {
     if (!gameState) return;
     if (a === 'buy' && firstBuyAll) {
-        alert("💡 [전액 매수 안내]\n\n레버리지 사용 시 발생할 이자와 갑작스러운 청산을 방지하기 위해,\n시스템이 배율에 따른 '최소 안전 증거금'을 제외한 금액만큼만 매수합니다.\n(배율이 높을수록 더 많은 여유 현금을 남깁니다)");
+        alert("💡 [전액 매수 안전 안내]\n\n현재 청산 기준(10%)에서 즉시 청산을 방지하기 위해\n시스템이 레버리지 배율(10x~30x)에 맞춰 '생존 현금'을 자동으로 남깁니다.\n배율이 높을수록 더 많은 현금을 보존하여 변동성을 견디게 합니다.");
         firstBuyAll = false;
     }
     let p = gameState.price, lev = selectedLev, feeRate = 0.0015, amt = 0;
     if (a === 'buy') { 
         let costPerShare = (p / lev) + (p * feeRate); 
-        // 레버리지가 높을수록 더 많은 안전 버퍼를 남김 (이자 및 변동성 대비)
-        // 1배: 2% 남김, 10배: 10% 남김, 50배: 20% 남김
-        let safetyBuffer = 0.02 + (lev * 0.004); 
-        amt = Math.floor((gameState.money * (1 - safetyBuffer)) / costPerShare); 
+        
+        // --- 10x, 20x, 30x 레버리지 전용 안전 공식 ---
+        // 배율이 높을수록 증거금 대비 여유 현금을 더 많이 남깁니다.
+        let safeUsageRate = 1.0 - (lev * 0.02); // 10배:80%, 20배:60%, 30배:40% 근처
+        safeUsageRate = Math.max(0.3, Math.min(0.98, safeUsageRate)); 
+        
+        amt = Math.floor((gameState.money * safeUsageRate) / costPerShare); 
     }
     else { amt = (currentTradeMode === 'long') ? gameState.shares : gameState.inv_shares; }
+    
     if (amt <= 0) return;
     document.getElementById('trade-amount').value = Math.floor(amt);
     handleTrade(a);
@@ -635,6 +661,21 @@ function closeSkillMenu() {
     document.getElementById('stageclear-msg').style.display = 'flex'; 
 }
 function closeNewsOverlay() { document.getElementById('news-msg').style.display = 'none'; }
+
+function showStageIntro() {
+    const stage = STAGES[gameState.current_stage_idx];
+    document.getElementById('intro-stage-num').innerText = `STAGE ${stage.stage}`;
+    document.getElementById('intro-stage-name').innerText = stage.name;
+    document.getElementById('intro-target').innerText = `$${stage.target.toLocaleString()}`;
+    document.getElementById('intro-days').innerText = `${stage.days}일`;
+    document.getElementById('stage-intro-msg').style.display = 'flex';
+}
+
+function startStage() {
+    document.getElementById('stage-intro-msg').style.display = 'none';
+    updateAndDraw();
+}
+
 function closeStageOverlay() { 
     if (gameState.skill_points > 0) {
         if (!confirm(`아직 ${gameState.skill_points}포인트의 스킬 포인트가 남았습니다.\n사용하지 않고 다음 스테이지로 진행하시겠습니까?\n(남은 포인트는 누적되어 다음 스테이지에서 사용 가능합니다)`)) {
@@ -642,7 +683,12 @@ function closeStageOverlay() {
         }
     }
     document.getElementById('stageclear-msg').style.display = 'none'; 
+    showStageIntro(); // 다음 스테이지 이름과 목표를 보여줌
 }
 function resetGame() { location.reload(); }
 
-window.onload = () => { gameState = generateInitialState(); updateUI(gameState); updateAndDraw(); };
+window.onload = () => { 
+    gameState = generateInitialState(); 
+    updateUI(gameState); 
+    showStageIntro(); // 시작 시 인트로 표시
+};
