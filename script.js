@@ -296,22 +296,39 @@ function trade(act) {
 }
 
 function tradeAll(act) {
-    let amt = 0;
-    if (act === 'buy' || act === 'buy_inv') amt = Math.floor((gameState.money * selectedLev) / gameState.price);
-    else if (act === 'sell') amt = gameState.shares;
-    else if (act === 'sell_inv') amt = gameState.inv_shares;
+    if (!gameState) return;
     
-    if (amt > 0) trade(act.includes('buy') ? act : act); // trade function logic supports this
-    // Since trade() uses the input value, we temporarily set it
+    let amt = 0;
+    const p = gameState.price;
+    const money = gameState.money;
+
+    if (act === 'buy' || act === 'buy_inv') {
+        // 부동 소수점 오차 방지를 위해 아주 작은 값을 빼서 안전하게 수량 계산
+        amt = Math.floor((money * selectedLev) / p);
+    } else if (act === 'sell') {
+        amt = gameState.shares;
+    } else if (act === 'sell_inv') {
+        amt = gameState.inv_shares;
+    }
+    
+    if (amt <= 0) return;
+
+    // 기존 입력값을 저장해두었다가 복원
     const oldVal = document.getElementById('trade-amount').value;
     document.getElementById('trade-amount').value = amt;
+    
+    // trade 함수를 한 번만 호출
     trade(act);
+    
     document.getElementById('trade-amount').value = oldVal;
 }
 
 function nextDay(days) {
     if (gameState.game_over || gameState.game_clear) { updateAndDraw(); return; }
     
+    // 시간 진행 시 차트 범위를 초기화하여 최신 캔들을 따라가게 함
+    currentRange = null;
+
     for (let d = 0; d < days; d++) {
         gameState.day++;
         if (gameState.news_remaining > 0) {
