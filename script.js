@@ -1,7 +1,7 @@
 // --- 상태 변수 ---
 let currentTheme = 'dark', currentTradeMode = 'long', gameState = null, marketEnergy = 1.0;
-let currentTF = 'daily', showInd = { ma: true, bb: false, vol: true, macd: false, rsi: false };
-let currentRange = null, currentDragMode = 'pan', selectedLev = 1;
+let currentTF = 'daily', showInd = { ma: true, bb: false, vol: false, macd: false, rsi: false, stoch: false, cci: false, adx: false };
+let currentRange = null, currentDragMode = 'pan', selectedLev = 1, firstBuyAll = true;
 
 // --- 탭 전환 ---
 function switchTab(tabId, btn) {
@@ -129,6 +129,16 @@ function nextDay(days) {
     if (!gameState || gameState.game_over) return;
     for (let d = 0; d < days; d++) {
         gameState.day++;
+
+        // 스테이지 제한 시간 체크
+        let stage = STAGES[gameState.current_stage_idx];
+        if (gameState.day > stage.days) {
+            gameState.game_over = true;
+            document.getElementById('fail-reason').innerText = `제한 시간(${stage.days}일)이 초과되었습니다. 목표 금액($${stage.target.toLocaleString()}) 달성 실패!`;
+            document.getElementById('gameover-msg').style.display = 'flex';
+            break;
+        }
+
         if (gameState.news_remaining > 0) { gameState.news_remaining--; if (gameState.news_remaining === 0) gameState.active_news = null; }
         let interestRate = 0.001 * (1 - (gameState.skills.risk * 0.1));
         let totalDebt = gameState.debt + gameState.inv_debt;
@@ -147,8 +157,12 @@ function nextDay(days) {
             change = Math.floor(Math.random() * 41) - 20;
             if (gameState.active_news) {
                 let n = gameState.active_news;
-                if (n.effect === 'bull') change = Math.floor(Math.random() * (20 * n.intensity));
+                if (n.effect === 'bull') change = Math.floor(Math.random() * (25 * n.intensity));
                 else if (n.effect === 'bear') change = -Math.floor(Math.random() * (20 * n.intensity));
+            }
+            // 바닥권(50원 미만) 기술적 반등 로직
+            if (gameState.price < 50) {
+                change += Math.floor(Math.random() * 15) + 5; 
             }
         }
         let o = gameState.price, c = Math.max(10, o + change);
@@ -158,6 +172,7 @@ function nextDay(days) {
         let longV = (gameState.shares * c) - gameState.debt;
         let invV = gameState.inv_shares > 0 ? (gameState.inv_shares * (2 * gameState.inv_avg_price - c)) - gameState.inv_debt : 0;
         gameState.total_asset = gameState.money + longV + invV;
+        // 청산 조건: 유지 증거금 10% (복구)
         let marginLimit = 0.1 * (1 - (gameState.skills.risk * 0.1));
         if (totalDebt > 0 && gameState.total_asset < totalDebt * marginLimit) {
             gameState.shares = 0; gameState.inv_shares = 0; gameState.debt = 0; gameState.inv_debt = 0;
@@ -186,8 +201,18 @@ function setTradeMode(m) { currentTradeMode = m; document.getElementById('mode-l
 function handleTrade(act) { trade(currentTradeMode === 'long' ? act : act + '_inv'); }
 function handleTradeAll(a) {
     if (!gameState) return;
+    if (a === 'buy' && firstBuyAll) {
+        alert("💡 [전액 매수 안내]\n\n레버리지 사용 시 발생할 이자와 갑작스러운 청산을 방지하기 위해,\n시스템이 배율에 따른 '최소 안전 증거금'을 제외한 금액만큼만 매수합니다.\n(배율이 높을수록 더 많은 여유 현금을 남깁니다)");
+        firstBuyAll = false;
+    }
     let p = gameState.price, lev = selectedLev, feeRate = 0.0015, amt = 0;
-    if (a === 'buy') { let costPerShare = (p / lev) + (p * feeRate); amt = Math.floor(gameState.money / costPerShare); }
+    if (a === 'buy') { 
+        let costPerShare = (p / lev) + (p * feeRate); 
+        // 레버리지가 높을수록 더 많은 안전 버퍼를 남김 (이자 및 변동성 대비)
+        // 1배: 2% 남김, 10배: 10% 남김, 50배: 20% 남김
+        let safetyBuffer = 0.02 + (lev * 0.004); 
+        amt = Math.floor((gameState.money * (1 - safetyBuffer)) / costPerShare); 
+    }
     else { amt = (currentTradeMode === 'long') ? gameState.shares : gameState.inv_shares; }
     if (amt <= 0) return;
     document.getElementById('trade-amount').value = Math.floor(amt);
@@ -241,8 +266,33 @@ const ITEM_INFO = {
 function buyItem(type, price) {
     const item = ITEM_INFO[type];
     if (confirm(`${item.name}\n${item.desc}\n\n가격: $${price.toLocaleString()}\n구매하시겠습니까?`)) {
-        if (gameState.money >= price) { gameState.money -= price; gameState.items[type]++; updateUI(gameState); }
+        if (gameState.money >= price) { 
+            gameState.money -= price; 
+            gameState.items[type]++; 
+            // 상점 화면 잔액 즉시 갱신
+            const shopCashEl = document.getElementById('shop-cash');
+            if (shopCashEl) shopCashEl.innerText = `$${Math.floor(gameState.money).toLocaleString()}`;
+            updateUI(gameState); 
+        }
         else { alert("현금 부족!"); }
+    }
+}
+
+function upgradeSkill(type) {
+    if (gameState.skill_points > 0) {
+        if (gameState.skills[type] >= 5) {
+            alert("최대 레벨(5)에 도달했습니다!");
+            return;
+        }
+        gameState.skill_points--;
+        gameState.skills[type]++;
+        updateUI(gameState);
+        // 신용도 5레벨 달성 시 50x 레버리지 버튼 처리
+        if (type === 'credit' && gameState.skills.credit >= 5) {
+             let l50 = document.getElementById('lev-50x'); if(l50) l50.style.display = 'inline-block';
+        }
+    } else {
+        alert("스킬 포인트가 부족합니다!");
     }
 }
 
@@ -279,39 +329,277 @@ function updateAndDraw() {
         else { let g = grouped[key]; g.high = Math.max(g.high, h.high); g.low = Math.min(g.low, h.low); g.close = h.close; g.vol += h.vol; }
     });
     let hist = Object.values(grouped).sort((a, b) => a.day - b.day);
-    if (currentTF === 'daily') hist = hist.slice(-60); 
-    else if (currentTF === 'monthly') hist = hist.slice(-60); // 10년(120개)에서 5년(60개)으로 축소
-    else hist = hist.slice(-30); 
+    let displayHist = [...hist];
+    if (currentTF === 'daily') displayHist = hist.slice(-60); 
+    else if (currentTF === 'monthly') displayHist = hist.slice(-60); 
+    else displayHist = hist.slice(-30); 
+
     const isDark = (currentTheme === 'dark');
-    const traces = [{ x: hist.map((_, i) => i), open: hist.map(h => h.open), high: hist.map(h => h.high), low: hist.map(h => h.low), close: hist.map(h => h.close), type: 'candlestick', increasing: {line:{color:'#ff3131'}}, decreasing: {line:{color:'#2196f3'}}, yaxis: 'y' }];
+    const isMobile = window.innerWidth < 600;
+    const traces = [];
+    const startIndex = hist.length - displayHist.length;
+
+    // X축 날짜 겹침 방지: 표시 개수 제한
+    const tickCount = isMobile ? 6 : 12;
+    const tickStep = Math.ceil(displayHist.length / tickCount);
+    const tickIndices = displayHist.map((_, i) => i).filter(i => i % tickStep === 0 || i === displayHist.length - 1);
+
+    // 1. 캔들스틱
+    traces.push({
+        x: displayHist.map((_, i) => i),
+        open: displayHist.map(h => h.open), high: displayHist.map(h => h.high),
+        low: displayHist.map(h => h.low), close: displayHist.map(h => h.close),
+        type: 'candlestick',
+        increasing: {line:{color:'#ff3131', width: 1}, fillcolor: '#ff3131'},
+        decreasing: {line:{color:'#2196f3', width: 1}, fillcolor: '#2196f3'},
+        yaxis: 'y', name: 'Price'
+    });
+
+    // 2. MA
+    if (showInd.ma) {
+        [5, 20].forEach((period, idx) => {
+            const data = [];
+            for (let i = startIndex; i < hist.length; i++) {
+                const slice = hist.slice(Math.max(0, i - period + 1), i + 1);
+                data.push(slice.reduce((a, b) => a + b.close, 0) / slice.length);
+            }
+            traces.push({ x: displayHist.map((_, i) => i), y: data, type: 'scatter', mode: 'lines', line: { width: 1, color: idx === 0 ? '#ffeb3b' : '#e91e63' }, yaxis: 'y' });
+        });
+    }
+
+    // 3. BB
+    if (showInd.bb) {
+        const period = 20; const upper = [], lower = [];
+        for (let i = startIndex; i < hist.length; i++) {
+            const slice = hist.slice(Math.max(0, i - period + 1), i + 1).map(h => h.close);
+            const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+            const stdDev = Math.sqrt(slice.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b) / slice.length);
+            upper.push(avg + 2 * stdDev); lower.push(avg - 2 * stdDev);
+        }
+        const bbColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,102,204,0.4)'; // 다크:연회색, 라이트:진청색
+        traces.push({ x: displayHist.map((_, i) => i), y: upper, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Upper' });
+        traces.push({ x: displayHist.map((_, i) => i), y: lower, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Lower' });
+    }
+
+    // 4. Vol
+    if (showInd.vol) {
+        traces.push({
+            x: displayHist.map((_, i) => i), y: displayHist.map(h => h.vol),
+            type: 'bar', marker: { color: displayHist.map(h => h.close >= h.open ? 'rgba(255,49,49,0.2)' : 'rgba(33,150,243,0.2)') },
+            yaxis: 'y2'
+        });
+    }
+
+    // 보조지표 계산 및 렌더링
+    const renderOscillator = (id, data, color, name) => {
+        traces.push({ x: displayHist.map((_, i) => i), y: data, type: 'scatter', mode: 'lines', line: { color: color, width: 1.2 }, yaxis: 'y3', name: name });
+    };
+
+    if (showInd.rsi) {
+        const period = 14; const rsiData = [];
+        for (let i = startIndex; i < hist.length; i++) {
+            if (i < period) { rsiData.push(null); continue; }
+            let up = 0, down = 0;
+            for (let j = i - period + 1; j <= i; j++) {
+                const diff = hist[j].close - hist[j-1].close;
+                if (diff > 0) up += diff; else down -= diff;
+            }
+            rsiData.push(100 - (100 / (1 + (up / (down || 1)))));
+        }
+        renderOscillator('rsi', rsiData, '#00ff00', 'RSI');
+    }
+
+    if (showInd.macd) {
+        const ema = (data, p) => {
+            let res = [data[0]]; const k = 2 / (p + 1);
+            for(let i=1; i<data.length; i++) res.push(data[i]*k + res[i-1]*(1-k));
+            return res;
+        };
+        const closes = hist.map(h => h.close);
+        const e12 = ema(closes, 12), e26 = ema(closes, 26);
+        const macdLine = e12.map((v, i) => v - e26[i]);
+        renderOscillator('macd', macdLine.slice(startIndex), '#2196f3', 'MACD');
+    }
+
+    if (showInd.stoch) {
+        const period = 14; const kLine = [];
+        for (let i = startIndex; i < hist.length; i++) {
+            const slice = hist.slice(Math.max(0, i - period + 1), i + 1);
+            const low = Math.min(...slice.map(h => h.low));
+            const high = Math.max(...slice.map(h => h.high));
+            kLine.push(100 * (hist[i].close - low) / ((high - low) || 1));
+        }
+        renderOscillator('stoch', kLine, '#ff3131', 'Stoch %K');
+    }
+
+    if (showInd.cci) {
+        const period = 20; const cciData = [];
+        for (let i = startIndex; i < hist.length; i++) {
+            const slice = hist.slice(Math.max(0, i - period + 1), i + 1);
+            const tp = slice.map(h => (h.high + h.low + h.close) / 3);
+            const avgTp = tp.reduce((a, b) => a + b, 0) / tp.length;
+            const md = tp.reduce((a, b) => a + Math.abs(b - avgTp), 0) / tp.length;
+            cciData.push((tp[tp.length-1] - avgTp) / (0.015 * (md || 1)));
+        }
+        renderOscillator('cci', cciData, '#e91e63', 'CCI');
+    }
+
+    if (showInd.adx) {
+        const period = 14; 
+        let trs = [], plusDMs = [], minusDMs = [];
+        // 1. TR 및 DM 계산
+        for (let i = 1; i < hist.length; i++) {
+            const h = hist[i], p = hist[i-1];
+            const tr = Math.max(h.high - h.low, Math.abs(h.high - p.close), Math.abs(h.low - p.close));
+            const plusDM = (h.high - p.high > p.low - h.low) ? Math.max(h.high - p.high, 0) : 0;
+            const minusDM = (p.low - h.low > h.high - p.high) ? Math.max(p.low - h.low, 0) : 0;
+            trs.push(tr); plusDMs.push(plusDM); minusDMs.push(minusDM);
+        }
+        // 2. Smoothing 및 ADX 계산
+        let adxFull = new Array(hist.length).fill(null);
+        let sTR = 0, sPDM = 0, sMDM = 0;
+        for (let i = 0; i < trs.length; i++) {
+            sTR += trs[i]; sPDM += plusDMs[i]; sMDM += minusDMs[i];
+            if (i >= period - 1) {
+                if (i > period - 1) {
+                    sTR = sTR - (sTR / period) + trs[i];
+                    sPDM = sPDM - (sPDM / period) + plusDMs[i];
+                    sMDM = sMDM - (sMDM / period) + minusDMs[i];
+                }
+                const plusDI = 100 * (sPDM / sTR);
+                const minusDI = 100 * (sMDM / sTR);
+                const dx = 100 * Math.abs(plusDI - minusDI) / (plusDI + minusDI || 1);
+                // 임시 저장 후 다시 스무딩하여 ADX 산출
+                adxFull[i + 1] = dx; 
+            }
+        }
+        // DX를 다시 한 번 스무딩하여 최종 ADX 산출
+        const adxData = [];
+        for (let i = startIndex; i < hist.length; i++) {
+            const slice = adxFull.slice(Math.max(0, i - period + 1), i + 1).filter(v => v !== null);
+            const val = slice.length > 0 ? slice.reduce((a, b) => a + b) / slice.length : null;
+            adxData.push(val);
+        }
+        renderOscillator('adx', adxData, '#00f2ff', 'ADX');
+    }
+
+    // 지표가 하나라도 켜져 있는지 확인
+    const anyInd = showInd.rsi || showInd.macd || showInd.stoch || showInd.cci || showInd.adx;
+
+    // --- 가이드 선 (현재가 및 평단가) 및 라벨 생성 ---
+    const shapes = [];
+    const annotations = [];
+    const lastIdx = displayHist.length - 1;
+    
+    // 1. 현재가 가이드 선 및 라벨 (우측)
+    shapes.push({
+        type: 'line', x0: 0, x1: lastIdx, y0: gameState.price, y1: gameState.price,
+        line: { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', width: 1, dash: 'dot' }
+    });
+    annotations.push({
+        x: lastIdx, y: gameState.price, text: `$${Math.floor(gameState.price).toLocaleString()}`,
+        showarrow: false, xanchor: 'left', yanchor: 'middle',
+        font: { size: 10, color: '#fff', weight: 'bold' },
+        bgcolor: isDark ? '#444' : '#888',
+        bordercolor: '#fff', borderwidth: 1, xshift: 5
+    });
+
+    // 2. 롱 평단가 선 및 라벨 (좌측)
+    if (gameState.shares > 0) {
+        shapes.push({
+            type: 'line', x0: 0, x1: lastIdx, y0: gameState.avg_price, y1: gameState.avg_price,
+            line: { color: '#ff9800', width: 1.5, dash: 'dash' }
+        });
+        annotations.push({
+            x: 0, y: gameState.avg_price, text: `롱평단: $${Math.floor(gameState.avg_price).toLocaleString()}`,
+            showarrow: false, xanchor: 'left', yanchor: 'bottom',
+            font: { size: 10, color: '#fff' },
+            bgcolor: 'rgba(255, 152, 0, 0.8)', xshift: 5
+        });
+    }
+
+    // 3. 인버스 평단가 선 및 라벨 (좌측)
+    if (gameState.inv_shares > 0) {
+        shapes.push({
+            type: 'line', x0: 0, x1: lastIdx, y0: gameState.inv_avg_price, y1: gameState.inv_avg_price,
+            line: { color: '#9c27b0', width: 1.5, dash: 'dash' }
+        });
+        annotations.push({
+            x: 0, y: gameState.inv_avg_price, text: `숏평단: $${Math.floor(gameState.inv_avg_price).toLocaleString()}`,
+            showarrow: false, xanchor: 'left', yanchor: 'top',
+            font: { size: 10, color: '#fff' },
+            bgcolor: 'rgba(156, 39, 176, 0.8)', xshift: 5
+        });
+    }
+
     const layout = {
-        paper_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', plot_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', font: { color: isDark ? '#00f2ff' : '#1a2a3a', size: 10 },
-        yaxis: { side: 'right', gridcolor: 'rgba(128,128,128,0.1)', fixedrange: false },
-        xaxis: { tickvals: hist.map((_, i) => i), ticktext: hist.map(h => h.label), gridcolor: 'rgba(128,128,128,0.1)', range: currentRange, fixedrange: false },
-        margin: { t: 10, b: 20, l: 10, r: 50 }, showlegend: false, dragmode: currentDragMode, shapes: []
+        paper_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', plot_bgcolor: isDark ? '#0a0b10' : '#f0f2f5',
+        font: { color: isDark ? '#00f2ff' : '#1a2a3a', size: 10 },
+        showlegend: false, dragmode: currentDragMode, 
+        margin: { t: 10, b: 65, l: 10, r: 60 },
+        xaxis: { 
+            tickvals: tickIndices, 
+            ticktext: tickIndices.map(i => displayHist[i].label), 
+            gridcolor: 'rgba(128,128,128,0.1)', 
+            range: currentRange, 
+            fixedrange: false,
+            tickfont: { size: isMobile ? 9 : 10 },
+            rangeslider: { 
+                visible: true, 
+                thickness: 0.08,
+                bgcolor: isDark ? '#15171e' : '#e0e0e0',
+                bordercolor: 'rgba(128,128,128,0.3)',
+                borderwidth: 1,
+                yaxis: { rangemode: 'fixed' }
+            }
+        },
+        yaxis: { 
+            side: 'right', 
+            gridcolor: 'rgba(128,128,128,0.1)', 
+            domain: anyInd ? [0.4, 1] : [0.1, 1],
+            tickfont: { color: isDark ? '#00f2ff' : '#1a2a3a' }
+        },
+        yaxis2: { 
+            overlaying: 'y', 
+            showgrid: false, 
+            showticklabels: false, 
+            domain: anyInd ? [0.4, 0.6] : [0.1, 0.3], 
+            opacity: 0.15 
+        },
+        yaxis3: { 
+            side: 'right', 
+            gridcolor: 'rgba(128,128,128,0.1)', 
+            domain: [0, 0.3], 
+            range: [-150, 200],
+            visible: anyInd,
+            tickfont: { 
+                color: isDark ? '#ffca28' : '#e65100',
+                size: 11,
+                fontweight: 'bold'
+            },
+            zerolinecolor: isDark ? 'rgba(255,202,40,0.2)' : 'rgba(230,81,0,0.2)'
+        },
+        shapes: shapes,
+        annotations: annotations // 이 부분이 드디어 추가되었습니다.
     };
 
-    const config = {
-        displaylogo: false,
-        responsive: true,
-        scrollZoom: true, // 핀치 줌 및 휠 줌 통합 활성화
-        doubleClick: 'reset+autosize',
-        staticPlot: false,
-        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoom2d']
-    };
-
+    const config = { displaylogo: false, responsive: true, scrollZoom: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoom2d'] };
     Plotly.react('chart', traces, layout, config);
     document.getElementById('chart').on('plotly_relayout', e => { if (e['xaxis.range[0]'] !== undefined) currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; });
     updateUI(gameState);
 }
 
 function updateUI(s) {
-    animateValue('money', Math.floor(s.money)); animateValue('total_asset', Math.floor(s.total_asset));
-    document.getElementById('shares').innerText = Math.floor(s.shares).toLocaleString();
-    document.getElementById('inv_shares').innerText = Math.floor(s.inv_shares).toLocaleString();
-    document.getElementById('total_debt').innerText = Math.floor(s.debt + s.inv_debt).toLocaleString();
+    if (!s) return;
+    animateValue('money', Math.floor(s.money)); 
+    animateValue('total_asset', Math.floor(s.total_asset));
+    const sharesEl = document.getElementById('shares'); if(sharesEl) sharesEl.innerText = Math.floor(s.shares).toLocaleString();
+    const invSharesEl = document.getElementById('inv_shares'); if(invSharesEl) invSharesEl.innerText = Math.floor(s.inv_shares).toLocaleString();
+    const debtEl = document.getElementById('total_debt'); if(debtEl) debtEl.innerText = Math.floor(s.debt + s.inv_debt).toLocaleString();
+    
     const stage = STAGES[s.current_stage_idx] || STAGES[STAGES.length - 1];
     const newsHTML = s.news_history.slice().reverse().map(n => `<div class="news-item"><b>${n.day}일:</b> ${n.title}</div>`).join('');
+    
     const elements = {
         'current-stage-num-side': stage.stage, 'current-stage-num-mobile': stage.stage,
         'target-money-side': `$${stage.target.toLocaleString()}`, 'target-money-mobile': stage.target.toLocaleString(),
@@ -357,4 +645,4 @@ function closeStageOverlay() {
 }
 function resetGame() { location.reload(); }
 
-window.onload = () => { gameState = generateInitialState(); updateAndDraw(); };
+window.onload = () => { gameState = generateInitialState(); updateUI(gameState); updateAndDraw(); };
