@@ -335,7 +335,7 @@ function updateHOFRecords() {
     let changed = false;
 
     if (gameState.total_asset > hof.bestAsset) { hof.bestAsset = gameState.total_asset; changed = true; }
-    if (gameState.current_stage_idx > hof.maxStage) { hof.maxStage = gameState.current_stage_idx; changed = true; }
+    if (gameState.current_stage_idx + 1 > hof.maxStage) { hof.maxStage = gameState.current_stage_idx + 1; changed = true; }
     
     if (changed) saveHOF(hof);
 }
@@ -347,7 +347,7 @@ function finalizeHOFStats() {
     hof.totalDays += gameState.day;
     // 최고 기록 마지막 확인
     hof.bestAsset = Math.max(hof.bestAsset, gameState.total_asset);
-    hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx);
+    hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx + 1);
     saveHOF(hof);
 }
 
@@ -355,6 +355,7 @@ function finalizeHOFStats() {
 function saveGame() {
     if (!gameState || gameState.game_over) return;
     localStorage.setItem(SAVE_DATA_KEY, JSON.stringify(gameState));
+    updateHOFRecords(); // 최고 기록 실시간 갱신 추가
 }
 
 // 페이지 이탈 방지 및 자동 저장
@@ -445,7 +446,7 @@ function showHallOfFame() {
     // 기록 업데이트 (게임 진행 중일 때만 임시 업데이트)
     if (gameState) {
         hof.bestAsset = Math.max(hof.bestAsset, gameState.total_asset);
-        hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx);
+        hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx + 1);
     }
 
     // 다른 모든 오버레이 숨기기
@@ -1314,6 +1315,12 @@ function confirmContinue(isContinue) {
 function startNewGame() {
     clearSave();
     gameState = generateInitialState(); 
+    
+    // 플레이 횟수 증가 및 영구 저장
+    let hof = getHOF();
+    hof.playCount++;
+    saveHOF(hof);
+    
     updateUI(gameState); 
     showStageIntro(); 
 }
