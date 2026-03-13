@@ -113,17 +113,117 @@ const STAGES = [
     { stage: 20, days: 7000, target: 100000000000000, name: "🕉️ 불멸의 투자의 신" }
 ];
 
-// --- 100가지 랜덤 뉴스 풀 (대표 항목) ---
+// --- 100가지 랜덤 뉴스 풀 (다양한 테마 및 밸런스 조정 완료) ---
 const NEWS_POOL = [
-    { title: "📢 중앙은행 금리 인하 발표!", effect: "bull", intensity: 2.5, duration: 5 },
-    { title: "🚀 AI 반도체 수요 폭발적 증가", effect: "bull", intensity: 3.2, duration: 7 },
-    { title: "🍀 신약 임상 3상 최종 통과", effect: "bull", intensity: 4.5, duration: 8 },
-    { title: "🚨 소비자 물가 폭등, 인플레이션 비상", effect: "bear", intensity: 2.5, duration: 5 },
-    { title: "🌊 글로벌 대형 은행 파산 위기", effect: "bear", intensity: 4.8, duration: 15 },
-    { title: "💣 지정학적 리스크, 전쟁 발발 위기", effect: "bear", intensity: 5.0, duration: 20 },
-    { title: "⚠️ 미-중 무역 협상 진전과 난항 반복", effect: "volatile", intensity: 3.5, duration: 5 },
-    { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 }
+    // --- 거시 경제 (Macro) ---
+    { title: "📢 중앙은행 금리 인하 발표! 시장에 돈이 풀린다", effect: "bull", intensity: 2.5, duration: 3 },
+    { title: "🚨 인플레이션 쇼크! 금리 인상 공포 확산", effect: "bear", intensity: 2.8, duration: 4 },
+    { title: "📉 CPI 지수 예상치 하회, 긴축 종료 기대", effect: "bull", intensity: 2.0, duration: 3 },
+    { title: "🏦 글로벌 대형 은행 파산 위기설 발생", effect: "bear", intensity: 4.5, duration: 6 },
+    { title: "💸 국채 금리 폭등, 위험 자산 투매 발생", effect: "bear", intensity: 3.0, duration: 4 },
+    { title: "🌍 IMF, 세계 경제 성장률 전망치 상향", effect: "bull", intensity: 1.8, duration: 5 },
+    { title: "📊 고용 지표 역대급 호조, 경기 과열 우려", effect: "bull", intensity: 1.5, duration: 3 },
+    { title: "🏚️ 부동산 버블 붕괴 조짐, 금융권 부실 비상", effect: "bear", intensity: 3.8, duration: 7 },
+    { title: "💵 달러 인덱스 폭등, 신흥국 자금 유출 가속", effect: "bear", intensity: 2.8, duration: 5 },
+    { title: "⚡ 에너지 가격 폭등으로 전 세계 인플레 비상", effect: "bear", intensity: 3.5, duration: 4 },
+
+    // --- 반도체 & AI (Tech) ---
+    { title: "🚀 AI 반도체 수요 폭발적 증가, 공급 부족", effect: "bull", intensity: 3.8, duration: 5 },
+    { title: "🧠 세계 최초 인간형 AI 상용화 성공 소식", effect: "bull", intensity: 4.2, duration: 4 },
+    { title: "🛰️ 초미세 공정 한계 돌파, 수율 90% 달성", effect: "bull", intensity: 3.0, duration: 3 },
+    { title: "💻 차세대 양자 컴퓨터 양산 소식 발표", effect: "bull", intensity: 5.0, duration: 6 },
+    { title: "🛠️ 핵심 반도체 소재 수출 규제 발효", effect: "bear", intensity: 2.5, duration: 4 },
+    { title: "📵 스마트폰 출하량 급감, 업계 성장 둔화", effect: "bear", intensity: 2.2, duration: 5 },
+    { title: "☁️ 클라우드 서버 대규모 먹통 사태 발생", effect: "bear", intensity: 3.0, duration: 2 },
+    { title: "👓 혁신적 VR/AR 기기 전격 출시", effect: "bull", intensity: 2.5, duration: 4 },
+    { title: "🔒 국가급 사이버 보안 공격 방어 성공", effect: "bull", intensity: 1.8, duration: 3 },
+    { title: "📉 메모리 가격 폭락, 반도체 업계 위기론", effect: "bear", intensity: 2.5, duration: 5 },
+
+    // --- 바이오 & 헬스케어 (Bio) ---
+    { title: "🍀 암 정복 가능한 혁신 신약 임상 3상 통과", effect: "bull", intensity: 4.8, duration: 7 },
+    { title: "🧬 유전자 가위 기술로 유전병 치료 성공", effect: "bull", intensity: 3.8, duration: 5 },
+    { title: "🦠 신종 변이 바이러스 발견, 전 세계 비상", effect: "bear", intensity: 4.2, duration: 6 },
+    { title: "🏥 원격 진료 플랫폼 가입자 폭증 소식", effect: "bull", intensity: 2.2, duration: 4 },
+    { title: "⚠️ 대형 제약사 신약 부작용 은폐 의혹 폭로", effect: "bear", intensity: 4.0, duration: 5 },
+    { title: "💊 비만 치료제 품귀 현상, 주문 폭주", effect: "bull", intensity: 3.2, duration: 4 },
+    { title: "🧪 치매 치료제 동물 실험 획기적 결과", effect: "bull", intensity: 2.8, duration: 5 },
+    { title: "📉 항암제 가격 강제 인하 정책 발표", effect: "bear", intensity: 2.5, duration: 4 },
+    { title: "🚫 복제약 난립으로 수익성 악화 우려", effect: "bear", intensity: 1.8, duration: 3 },
+    { title: "🦷 임플란트 신소재 승인 및 수출 호재", effect: "bull", intensity: 2.0, duration: 4 },
+
+    // --- 이차전지 & 친환경 (Energy) ---
+    { title: "🔋 전고체 배터리 주행거리 1,200km 달성", effect: "bull", intensity: 4.5, duration: 6 },
+    { title: "⚡ 전기차 보조금 전격 확대 결정", effect: "bull", intensity: 2.8, duration: 5 },
+    { title: "♻️ 탄소 중립 규제 강화로 친환경주 급등", effect: "bull", intensity: 2.5, duration: 7 },
+    { title: "🔥 리튬 및 핵심 광물 가격 폭락 발생", effect: "bear", intensity: 3.2, duration: 4 },
+    { title: "🛢️ 유가 급등으로 정유 및 배터리 수혜 기대", effect: "bull", intensity: 2.2, duration: 5 },
+    { title: "🌊 해상 풍력 대단지 상업 가동 시작", effect: "bull", intensity: 2.0, duration: 6 },
+    { title: "☀️ 태양광 패널 효율 세계 최고치 경신", effect: "bull", intensity: 1.8, duration: 4 },
+    { title: "⚠️ 수소차 상용화 계획 보류 소식", effect: "bear", intensity: 3.0, duration: 5 },
+    { title: "🌬️ 대기 오염 규제 강화로 관련 업종 강세", effect: "bull", intensity: 1.5, duration: 3 },
+    { title: "🌲 아마존 산림 보호를 위한 대규모 펀드 조성", effect: "bull", intensity: 1.2, duration: 5 },
+
+    // --- 지정학 및 정치 (Geopolitics) ---
+    { title: "💣 지정학적 리스크 심화, 전쟁 긴장 고조", effect: "bear", intensity: 5.0, duration: 8 },
+    { title: "🤝 적대적 국가 간 극적인 평화 협상 타결", effect: "bull", intensity: 4.8, duration: 7 },
+    { title: "🛑 강력한 무역 제재 조치 전격 발표", effect: "bear", intensity: 3.8, duration: 5 },
+    { title: "🗳️ 대선 결과 확정, 시장 친화 정책 예고", effect: "bull", intensity: 2.8, duration: 4 },
+    { title: "🚢 해상 물류 마비, 글로벌 공급 대란", effect: "bear", intensity: 3.2, duration: 6 },
+    { title: "⚠️ 원자재 생산국 내전 발생으로 수급 비상", effect: "bear", intensity: 3.5, duration: 7 },
+    { title: "🌐 글로벌 자유무역협정(FTA) 서명 소식", effect: "bull", intensity: 2.2, duration: 5 },
+    { title: "🚫 해외 공장 자산 몰수 조치 뉴스 발생", effect: "bear", intensity: 4.5, duration: 6 },
+    { title: "💬 정치인의 금리 개입 발언으로 시장 요동", effect: "volatile", intensity: 3.5, duration: 2 },
+    { title: "📜 법인세 인하 법안 전격 통과", effect: "bull", intensity: 2.0, duration: 4 },
+
+    // --- 기업 & 경영 (Corporate) ---
+    { title: "👑 업계 1위 기업 간 대규모 M&A 소식", effect: "bull", intensity: 3.5, duration: 5 },
+    { title: "💔 핵심 연구진 집단 이직 소문 확산", effect: "bear", intensity: 3.2, duration: 4 },
+    { title: "📉 1분기 실적 '어닝 쇼크' 발표", effect: "bear", intensity: 3.0, duration: 3 },
+    { title: "💎 세계 최초 신소재 상용화 라인 가동", effect: "bull", intensity: 4.0, duration: 6 },
+    { title: "🛑 경영진 횡령 의혹으로 검찰 압수수색", effect: "bear", intensity: 4.2, duration: 7 },
+    { title: "💸 역대 최고 수준의 배당금 지급 공시", effect: "bull", intensity: 2.5, duration: 3 },
+    { title: "📦 물류 로봇 도입으로 수익성 극대화", effect: "bull", intensity: 2.0, duration: 5 },
+    { title: "⚠️ 품질 결함으로 인한 글로벌 대규모 리콜", effect: "bear", intensity: 3.8, duration: 5 },
+    { title: "🏢 유명 스타 CEO 영입 소식 발생", effect: "bull", intensity: 2.8, duration: 4 },
+    { title: "🌟 브랜드 가치 세계 1위 달성 기념", effect: "bull", intensity: 2.0, duration: 3 },
+
+    // --- 소비 & 서비스 (Service/Consumer) ---
+    { title: "🎮 전 세계 열풍인 대작 게임 정식 출시", effect: "bull", intensity: 2.8, duration: 5 },
+    { title: "🍿 OTT 서비스 구독자 급증 신기록 달성", effect: "bull", intensity: 2.2, duration: 4 },
+    { title: "✈️ 해외여행 수요 팬데믹 이전 수준 추월", effect: "bull", intensity: 2.5, duration: 6 },
+    { title: "📉 명품 시장 거품 붕괴 소식에 유통주 폭락", effect: "bear", intensity: 3.0, duration: 5 },
+    { title: "🍔 글로벌 식품 체인 위생 논란 발생", effect: "bear", intensity: 3.2, duration: 3 },
+    { title: "🛍️ 쇼핑 축제 매출액 역대 최고치 경신", effect: "bull", intensity: 1.8, duration: 3 },
+    { title: "🚛 물류 대란 해소로 유통망 정상화", effect: "bull", intensity: 1.5, duration: 4 },
+    { title: "💳 개인 연체율 급증으로 소비 위축 우려", effect: "bear", intensity: 3.0, duration: 6 },
+    { title: "🎨 K-콘텐츠 글로벌 흥행으로 관련주 강세", effect: "bull", intensity: 2.5, duration: 5 },
+    { title: "🛋️ 1인 가구 증가로 소형 가전 판매 폭주", effect: "bull", intensity: 1.5, duration: 4 },
+
+    // --- 우주 & 미래기술 (Future) ---
+    { title: "🪐 화성 탐사선 착륙 및 생명체 흔적 발견", effect: "bull", intensity: 4.8, duration: 8 },
+    { title: "🛰️ 저궤도 위성 인터넷 전 세계 개통 완료", effect: "bull", intensity: 3.2, duration: 5 },
+    { title: "🚀 소행성 광물 채굴 로봇 개발 완료", effect: "bull", intensity: 5.0, duration: 7 },
+    { title: "🛸 미확인 비행체 공개 정부 공식 브리핑", effect: "bull", intensity: 2.8, duration: 4 },
+    { title: "🧬 노화 방지 신기술 인간 임상 개시", effect: "bull", intensity: 4.0, duration: 6 },
+    { title: "🌊 해저 도시 건설 프로젝트 첫 삽", effect: "bull", intensity: 2.5, duration: 8 },
+    { title: "🚁 플라잉카 시내 시범 운행 성공", effect: "bull", intensity: 3.0, duration: 5 },
+    { title: "📉 스타트업 투자 고갈로 기술주 위기설", effect: "bear", intensity: 3.5, duration: 6 },
+    { title: "⚠️ 이상 기후로 인한 글로벌 식량 위기", effect: "bear", intensity: 2.8, duration: 5 },
+    { title: "🧪 실험실 배양육 시판 허가 획득", effect: "bull", intensity: 1.8, duration: 4 },
+
+    // --- 시장 심리 & 기타 (Sentiment/Etc) ---
+    { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 },
+    { title: "🌋 유명 투자 전문가의 폭락 경보 발령", effect: "bear", intensity: 3.8, duration: 3 },
+    { title: "💰 포모(FOMO) 현상 가속, 개인 매수세 폭발", effect: "bull", intensity: 3.5, duration: 4 },
+    { title: "⚠️ 숏 스퀴즈 발생! 인버스 투자자 비상", effect: "bull", intensity: 4.5, duration: 2 },
+    { title: "🚫 과도한 레버리지 집중 단속 공지", effect: "bear", intensity: 2.8, duration: 4 },
+    { title: "📰 주가 조작 세력 검거 소식에 신뢰 회복", effect: "bull", intensity: 1.5, duration: 3 },
+    { title: "📊 연말 산타 랠리 기대감 고조", effect: "bull", intensity: 2.2, duration: 4 },
+    { title: "❄️ 겨울 혹한 예보에 난방 관련주 급등", effect: "bull", intensity: 1.8, duration: 4 },
+    { title: "📣 워렌 버핏의 대규모 추가 매수 소식", effect: "bull", intensity: 2.8, duration: 3 },
+    { title: "📅 분기 말 수익률 관리 장세 시작", effect: "bull", intensity: 1.5, duration: 2 }
 ];
+
 
 // --- 유틸리티 및 엔진 ---
 function animateValue(id, end) {
