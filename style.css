@@ -323,7 +323,7 @@ h1 {
     width: 95%;
     max-width: 550px;
     background: rgba(16, 20, 32, 0.98);
-    padding: 40px;
+    padding: 30px;
     border-radius: 32px;
     border: 1px solid var(--border-color);
     box-sizing: border-box;
@@ -332,13 +332,13 @@ h1 {
 }
 
 .intro-stage-name {
-    font-size: 2.1rem;
+    font-size: 1.8rem;
     margin: 20px 0;
     font-weight: 900;
     color: var(--accent-color);
     text-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
 }
-.intro-target-val { font-size: 2.1rem; font-weight: 900; color: var(--neon-green); margin: 0; }
+.intro-target-val { font-size: 2.0rem; font-weight: 900; color: var(--neon-green); margin: 0; }
 /* --- Mobile Specific (Tabbed) --- */
 @media (max-width: 900px) {
     body { padding: 5px; }
