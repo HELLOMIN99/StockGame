@@ -546,83 +546,86 @@ function nextDay(days) {
         gameState.day++;
         if (gameState.day >= 1000) checkAchievement('survival');
 
-        // 스테이지 제한 시간 체크
+        // 1. 스테이지 제한 시간 체크
         let stage = STAGES[gameState.current_stage_idx];
         if (gameState.day > stage.days) {
             gameState.game_over = true;
-            clearSave(); // 종결된 게임이므로 저장 데이터 삭제
+            clearSave();
             document.getElementById('fail-reason').innerText = `제한 시간(${stage.days}일)이 초과되었습니다. 목표 금액($${stage.target.toLocaleString()}) 달성 실패!`;
             document.getElementById('gameover-msg').style.display = 'flex';
             break;
         }
 
-        // 3일 전 경고 알림 (현금화 독려)
-        if (stage.days - gameState.day === 3) {
-            alert(`⚠️ 스테이지 종료 3일 전입니다!\n\n목표 달성을 위해 보유 중인 주식을 모두 매도하여 현금화하시기 바랍니다.\n(미실현 손익은 클리어 조건에 포함되지 않습니다)`);
-        }
-
-        if (gameState.news_remaining > 0) { gameState.news_remaining--; if (gameState.news_remaining === 0) gameState.active_news = null; }
+        // 2. 이자 계산
         let interestRate = 0.001 * (1 - (gameState.skills.risk * 0.1));
         let totalDebt = gameState.debt + gameState.inv_debt;
         if (totalDebt > 0) gameState.money -= (totalDebt * interestRate);
-        
-        // 돌발 이벤트 발생 체크 (약 2% 확률)
-        if (days === 1 && Math.random() < 0.02) {
-            triggerRandomEvent();
-            updateAndDraw();
-            return; // 이벤트 팝업이 뜨면 그날의 진행은 일단 정지
-        }
 
-        if (!gameState.active_news && Math.random() < (0.05 + gameState.skills.insight * 0.02)) {
-            let n = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
-            gameState.active_news = n; gameState.news_remaining = n.duration;
-            gameState.news_count++;
-            if (gameState.news_count >= 10) checkAchievement('news_victim');
-            gameState.news_history.push({ day: gameState.day, title: n.title });
-            document.getElementById('news-title').innerText = n.title;
-            document.getElementById('news-msg').style.display = 'flex';
-            if (days > 1) { updateAndDraw(); return; }
-        }
+        // 3. 주가 변동 계산 (현재 활성화된 뉴스 효과 적용)
         let change = 0;
-        if (gameState.time_stopper_days > 0) { gameState.time_stopper_days--; } 
-        else {
+        if (gameState.time_stopper_days > 0) { 
+            gameState.time_stopper_days--; 
+        } else {
             change = Math.floor(Math.random() * 41) - 20;
             if (gameState.active_news) {
                 let n = gameState.active_news;
                 if (n.effect === 'bull') change = Math.floor(Math.random() * (25 * n.intensity));
                 else if (n.effect === 'bear') {
-                    // 주가가 낮을 때는 하락폭을 제한하여 바닥 고착화 방지
                     let dropLimit = (gameState.price < 200) ? 0.5 : 1.0;
                     change = -Math.floor(Math.random() * (20 * n.intensity * dropLimit));
                 }
             }
-            // 바닥권 탈출 엔진: 가격이 낮을수록 위로 쏘아 올리는 힘이 강력해짐
             if (gameState.price < 150) {
-                let thrust = (150 - gameState.price) / 2; // 가격이 낮을수록 커짐
+                let thrust = (150 - gameState.price) / 2;
                 change += Math.floor(Math.random() * 20) + thrust; 
             }
         }
+
+        // 4. 주가 및 히스토리 업데이트
         let o = gameState.price, c = Math.max(10, o + change);
         let h = Math.max(o, c) + 5, l = Math.max(10, Math.min(o, c) - 5);
         gameState.price = c;
         gameState.history.push({ day: gameState.day, open: o, high: h, low: l, close: c, vol: Math.floor(Math.random() * 2000) });
+
+        // 5. 자산 및 청산 체크
         let longV = (gameState.shares * c) - gameState.debt;
         let invV = gameState.inv_shares > 0 ? (gameState.inv_shares * (2 * gameState.inv_avg_price - c)) - gameState.inv_debt : 0;
         gameState.total_asset = gameState.money + longV + invV;
-        // 청산 조건: 유지 증거금 10% (복구)
+
         let marginLimit = 0.1 * (1 - (gameState.skills.risk * 0.1));
         if (totalDebt > 0 && gameState.total_asset < totalDebt * marginLimit) {
-            gameState.game_over = true;
-            clearSave();
+            gameState.game_over = true; clearSave();
             gameState.shares = 0; gameState.inv_shares = 0; gameState.debt = 0; gameState.inv_debt = 0;
             document.getElementById('liquidation-msg').style.display = 'flex'; break;
         }
-        if (gameState.total_asset <= 0) { 
-            gameState.game_over = true; 
-            clearSave(); 
-            document.getElementById('gameover-msg').style.display = 'flex'; 
-            break; 
+        if (gameState.total_asset <= 0) { gameState.game_over = true; clearSave(); document.getElementById('gameover-msg').style.display = 'flex'; break; }
+
+        // 6. 뉴스 기간 차감 (반영이 끝난 후 차감)
+        if (gameState.active_news) {
+            gameState.news_remaining--;
+            if (gameState.news_remaining <= 0) gameState.active_news = null;
         }
+
+        // 7. [핵심] 새로운 뉴스 또는 이벤트 발생 체크 (내일을 위한 예고)
+        // 돌발 이벤트 (2%)
+        if (Math.random() < 0.02) {
+            triggerRandomEvent();
+            updateAndDraw(); return; // 이벤트 발생 시 즉시 중단하여 대응 기회 제공
+        }
+
+        // 뉴스 발생 (통찰력 비례)
+        if (!gameState.active_news && Math.random() < (0.05 + gameState.skills.insight * 0.02)) {
+            let n = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
+            gameState.active_news = n; 
+            gameState.news_remaining = n.duration;
+            gameState.news_count++;
+            if (gameState.news_count >= 10) checkAchievement('news_victim');
+            gameState.news_history.push({ day: gameState.day, title: n.title });
+            document.getElementById('news-title').innerText = n.title;
+            document.getElementById('news-msg').style.display = 'flex';
+            updateAndDraw(); return; // 뉴스 발생 시 즉시 중단하여 대응 기회 제공
+        }
+
         checkStageClear();
     }
     updateAndDraw();
