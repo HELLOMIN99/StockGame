@@ -15,7 +15,7 @@ function switchTab(tabId, btn) {
 // --- 설명 팝업 ---
 function showSkillDesc(type) {
     const descs = {
-        'insight': "🔍 [통찰력]\n레벨당 뉴스 발생 확률 +2%, 호재 확률이 증가합니다.",
+        'insight': "🔍 [통찰력]\n레벨당 뉴스 발생 확률 +4%! 더 많은 시장 정보(호재/악재)를 남들보다 빠르게 접하여 매매 기회를 창출합니다.",
         'risk': "🛡️ [위험 관리]\n레벨당 일일 이자 -10%, 청산 유지 증거금이 완화됩니다.",
         'credit': "💳 [신용도]\n레벨당 클리어 보너스 +$10,000, 5레벨 달성 시 50x 레버리지 해제!"
     };
@@ -34,6 +34,7 @@ function toggleTheme() {
         setDragMode('drawline');
     }
     updateAndDraw();
+    checkStageClear();
 }
 function toggleInd(n, btn) { showInd[n] = !showInd[n]; btn.classList.toggle('on', showInd[n]); updateAndDraw(); }
 function changeTF(tf) { 
@@ -88,40 +89,139 @@ function clearShapes() {
     Plotly.relayout('chart', { shapes: remainingShapes }); // 차트 즉시 쇄신
 }
 
-// --- 20단계 스테이지 설정 (난이도 하향 조정) ---
+// --- 20단계 스테이지 설정 (명칭 및 밸런스 최적화) ---
 const STAGES = [
-    { stage: 1, days: 30, target: 120000, name: "튜토리얼: 첫 도약" },
-    { stage: 2, days: 60, target: 300000, name: "기초 자산 형성" },
-    { stage: 3, days: 100, target: 800000, name: "백만 달러의 꿈" },
-    { stage: 4, days: 150, target: 2000000, name: "슈퍼 개미의 탄생" },
-    { stage: 5, days: 200, target: 7000000, name: "프로 투자자" },
-    { stage: 6, days: 300, target: 20000000, name: "자산가로 가는 길" },
-    { stage: 7, days: 450, target: 70000000, name: "억대 자산가" },
-    { stage: 8, days: 600, target: 200000000, name: "지역구 큰 손" },
-    { stage: 9, days: 800, target: 700000000, name: "유니콘 투자자" },
-    { stage: 10, days: 1000, target: 3000000000, name: "시장 지배자" },
-    { stage: 11, days: 1300, target: 15000000000, name: "데카콘 기업주" },
-    { stage: 12, days: 1600, target: 80000000000, name: "재벌가" },
-    { stage: 13, days: 2000, target: 400000000000, name: "국가급 부호" },
-    { stage: 14, days: 2500, target: 1500000000000, name: "조 단위 거부" },
-    { stage: 15, days: 3000, target: 8000000000000, name: "대륙급 거물" },
-    { stage: 16, days: 3600, target: 40000000000000, name: "지구의 주인" },
-    { stage: 17, days: 4300, target: 150000000000000, name: "행성급 부호" },
-    { stage: 18, days: 5100, target: 800000000000000, name: "은하급 거부" },
-    { stage: 19, days: 6000, target: 4000000000000000, name: "우주의 제왕" },
-    { stage: 20, days: 7000, target: 10000000000000000, name: "투자의 신 (완성)" }
+    { stage: 1, days: 30, target: 120000, name: "🌱 튜토리얼" },
+    { stage: 2, days: 60, target: 300000, name: "🚗 첫 번째 성공의 맛" },
+    { stage: 3, days: 90, target: 700000, name: "🏠 내 집 마련의 꿈" },
+    { stage: 4, days: 120, target: 1500000, name: "💼 백만장자의 시작" },
+    { stage: 5, days: 160, target: 4000000, name: "🏢 꼬마 빌딩 건물주" },
+    { stage: 6, days: 200, target: 10000000, name: "🏗️ 자산가로의 변신" },
+    { stage: 7, days: 250, target: 30000000, name: "📈 전업 투자자의 완성" },
+    { stage: 8, days: 320, target: 100000000, name: "🏆 억대 자산가 클럽" },
+    { stage: 9, days: 400, target: 300000000, name: "🏦 프라이빗 뱅커의 큰손" },
+    { stage: 10, days: 500, target: 1000000000, name: "💎 유니콘 기업 사냥꾼" },
+    { stage: 11, days: 650, target: 5000000000, name: "🌍 글로벌 시장 지배자" },
+    { stage: 12, days: 800, target: 20000000000, name: "👑 경제계의 황태자" },
+    { stage: 13, days: 1000, target: 100000000000, name: "🏛️ 국가 경제의 심장" },
+    { stage: 14, days: 1300, target: 500000000000, name: "🌌 세계 금융의 거물" },
+    { stage: 15, days: 1700, target: 1500000000000, name: "💵 조 단위의 제왕" },
+    { stage: 16, days: 2200, target: 10000000000000, name: "🌍 지구의 실질적 주인" },
+    { stage: 17, days: 2800, target: 50000000000000, name: "🛰️ 우주 산업의 정점" },
+    { stage: 18, days: 3500, target: 200000000000000, name: "🪐 행성 연합 대부호" },
+    { stage: 19, days: 4500, target: 1000000000000000, name: "☄️ 우주 화폐의 지배자" },
+    { stage: 20, days: 6000, target: 10000000000000000, name: "🕉️ 불멸의 투자의 신" }
 ];
 
-// --- 100가지 랜덤 뉴스 풀 (대표 항목) ---
+// --- 100가지 랜덤 뉴스 풀 (다양성 및 몰입감 강화) ---
 const NEWS_POOL = [
-    { title: "📢 중앙은행 금리 인하 발표!", effect: "bull", intensity: 2.5, duration: 5 },
-    { title: "🚀 AI 반도체 수요 폭발적 증가", effect: "bull", intensity: 3.2, duration: 7 },
-    { title: "🍀 신약 임상 3상 최종 통과", effect: "bull", intensity: 4.5, duration: 8 },
-    { title: "🚨 소비자 물가 폭등, 인플레이션 비상", effect: "bear", intensity: 2.5, duration: 5 },
-    { title: "🌊 글로벌 대형 은행 파산 위기", effect: "bear", intensity: 4.8, duration: 15 },
-    { title: "💣 지정학적 리스크, 전쟁 발발 위기", effect: "bear", intensity: 5.0, duration: 20 },
-    { title: "⚠️ 미-중 무역 협상 진전과 난항 반복", effect: "volatile", intensity: 3.5, duration: 5 },
-    { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 }
+    // --- 호재 (Bull) ---
+    { title: "📢 중앙은행, 전격 금리 인하 단행!", effect: "bull", intensity: 3.5, duration: 5 },
+    { title: "🚀 AI 반도체 신기술, 세계 최초 상용화 성공", effect: "bull", intensity: 4.2, duration: 7 },
+    { title: "🍀 K-바이오, 췌장암 완치 치료제 임상 3상 통과", effect: "bull", intensity: 5.0, duration: 10 },
+    { title: "💰 정부, 100조 규모 경기 부양책 발표", effect: "bull", intensity: 2.8, duration: 6 },
+    { title: "📱 차세대 폴더블폰 예약 판매 역대 최고치 경신", effect: "bull", intensity: 2.5, duration: 4 },
+    { title: "🤝 글로벌 빅테크 기업 간 '세기의 합병' 성사", effect: "bull", intensity: 3.8, duration: 8 },
+    { title: "⚡ 초전도체 상온 가동 데이터 공식 확인", effect: "bull", intensity: 6.0, duration: 12 },
+    { title: "🔋 전고체 배터리 주행거리 2,000km 돌파", effect: "bull", intensity: 3.2, duration: 5 },
+    { title: "🛰️ 스페이스X 대항마, 국내 위성 발사 성공", effect: "bull", intensity: 2.7, duration: 4 },
+    { title: "🎬 K-드라마, 전 세계 시청률 1위 석권", effect: "bull", intensity: 2.2, duration: 3 },
+    { title: "🚢 조선 업계, 10년치 일감 한 번에 수주", effect: "bull", intensity: 3.0, duration: 7 },
+    { title: "☀️ 태양광 발전 효율 40% 돌파 기적", effect: "bull", intensity: 2.4, duration: 5 },
+    { title: "🏥 난치병 유전자 가위 치료법 정부 승인", effect: "bull", intensity: 4.0, duration: 9 },
+    { title: "🏎️ 자율주행 레벨 5, 일반 도로 주행 허가", effect: "bull", intensity: 3.5, duration: 6 },
+    { title: "🎮 대작 AAA 게임 출시 하루 만에 1,000만 장 판매", effect: "bull", intensity: 2.3, duration: 3 },
+    { title: "🤖 가사 도우미 로봇, 가구 보급률 30% 돌파", effect: "bull", intensity: 2.8, duration: 5 },
+    { title: "💎 아프리카서 역대 최대 규모 다이아몬드 광산 발견", effect: "bull", intensity: 2.0, duration: 4 },
+    { title: "🍔 비건 고기 단가, 실제 소고기보다 낮아졌다", effect: "bull", intensity: 1.8, duration: 3 },
+    { title: "🏙️ 스마트 시티 건설 프로젝트 본궤도 진입", effect: "bull", intensity: 2.6, duration: 6 },
+    { title: "📉 물가 상승률 1%대 진입, 저물가 시대 복귀", effect: "bull", intensity: 2.4, duration: 5 },
+    { title: "🏛️ 상속세 전면 폐지 법안 국회 본회의 통과", effect: "bull", intensity: 3.3, duration: 7 },
+    { title: "📡 6G 통신망 세계 최초 전국 구축 완료", effect: "bull", intensity: 2.9, duration: 5 },
+    { title: "🐚 해수 담수화 기술 혁신, 물 부족 완전 해결", effect: "bull", intensity: 2.5, duration: 8 },
+    { title: "♻️ 플라스틱 분해 박테리아 대량 생산 성공", effect: "bull", intensity: 2.1, duration: 4 },
+    { title: "🧠 뇌-컴퓨터 인터페이스(BCI)로 마비 환자 보행 성공", effect: "bull", intensity: 4.5, duration: 10 },
+    { title: "🧪 꿈의 에너지 '핵융합' 연속 가동 1시간 돌파", effect: "bull", intensity: 5.5, duration: 15 },
+    { title: "📦 글로벌 물류 로봇 표준화로 비용 70% 절감", effect: "bull", intensity: 2.9, duration: 6 },
+    { title: "💊 노화 방지 신약, 미 FDA 판매 허가 획득", effect: "bull", intensity: 4.8, duration: 12 },
+    { title: "🛸 수직이착륙 비행 택시, 도심 운행 서비스 시작", effect: "bull", intensity: 3.4, duration: 8 },
+    { title: "🧱 사막 모래를 건축 자재로 바꾸는 혁신 기술 개발", effect: "bull", intensity: 2.2, duration: 5 },
+
+    // --- 악재 (Bear) ---
+    { title: "🚨 소비자 물가 지수 폭등, 인플레이션 공포 재점화", effect: "bear", intensity: 3.0, duration: 5 },
+    { title: "🌊 글로벌 1위 투자은행, 유동성 위기로 파산 신청", effect: "bear", intensity: 5.5, duration: 15 },
+    { title: "💣 중동 전쟁 확전 위기, 유가 배럴당 $150 돌파", effect: "bear", intensity: 4.8, duration: 12 },
+    { title: "☣️ 변종 바이러스 출현, 국가 비상사태 선포", effect: "bear", intensity: 4.2, duration: 10 },
+    { title: "⚠️ 대형 IT 기업, 역대 최악의 개인정보 유출 사고", effect: "bear", intensity: 2.8, duration: 4 },
+    { title: "📉 대기업 3분기 어닝 쇼크, 실적 반토막", effect: "bear", intensity: 3.5, duration: 6 },
+    { title: "🌪️ 기록적인 초강력 태풍, 산업 단지 초토화", effect: "bear", intensity: 3.2, duration: 5 },
+    { title: "🔥 데이터 센터 화재로 국가 통신망 일시 마비", effect: "bear", intensity: 2.5, duration: 3 },
+    { title: "💀 국민 연금 고갈 시점 10년 앞당겨졌다", effect: "bear", intensity: 3.8, duration: 8 },
+    { title: "⚖️ 미 법원, 빅테크 기업에 강제 기업 분할 명령", effect: "bear", intensity: 4.0, duration: 10 },
+    { title: "🚫 반도체 핵심 소재 수출 규제 발효", effect: "bear", intensity: 3.4, duration: 7 },
+    { title: "🏦 가계 부채 역대 최고, 금리 인상 압박", effect: "bear", intensity: 2.9, duration: 6 },
+    { title: "🏭 환경 규제 강화로 제조업 공장 가동 중단 위기", effect: "bear", intensity: 2.4, duration: 5 },
+    { title: "📉 부동산 거품 붕괴 시작, 건설사 연쇄 부도", effect: "bear", intensity: 4.5, duration: 12 },
+    { title: "😰 청년 실업률 최고치, 내수 소비 급감", effect: "bear", intensity: 2.2, duration: 4 },
+    { title: "🧊 북극 빙하 붕괴로 해수면 상승 속도 5배 빨라져", effect: "bear", intensity: 2.0, duration: 8 },
+    { title: "🪧 전국 민주노총 총파업, 물류 대란 현실화", effect: "bear", intensity: 2.7, duration: 5 },
+    { title: "💊 기대했던 치매 치료제, 임상 부작용으로 전면 중단", effect: "bear", intensity: 4.2, duration: 9 },
+    { title: "🌑 기록적인 대정전 사태 발생, 국가 가동률 0%", effect: "bear", intensity: 3.0, duration: 3 },
+    { title: "💸 원-달러 환율 1,600원 돌파, 원화 가치 추락", effect: "bear", intensity: 3.6, duration: 7 },
+    { title: "🦜 조류 독감 인간 감염 사례 확인, 육류 시장 비상", effect: "bear", intensity: 2.3, duration: 5 },
+    { title: "🦟 열대 질병의 습격, 동남아 공장 생산 중단", effect: "bear", intensity: 2.1, duration: 4 },
+    { title: "🎭 유명 CEO의 회계 부정 및 횡령 혐의 구속", effect: "bear", intensity: 3.9, duration: 6 },
+    { title: "📉 외국인 자금 역대 최대 규모 '셀 코리아' 단행", effect: "bear", intensity: 3.7, duration: 5 },
+    { title: "🌋 일본 거대 화산 폭발 징후, 아시아 공급망 비상", effect: "bear", intensity: 4.0, duration: 10 },
+    { title: "🕳️ 거대 블랙홀급 사기 수법 발견, 금융 시스템 신뢰 붕괴", effect: "bear", intensity: 5.2, duration: 14 },
+    { title: "🌽 전 지구적 흉작으로 식량 가격 300% 폭등", effect: "bear", intensity: 3.8, duration: 10 },
+    { title: "🛰️ 국가 기밀 위성 해킹 당해... 안보 및 기술 유출 우려", effect: "bear", intensity: 4.5, duration: 7 },
+    { title: "📉 인공지능 알고리즘 오류로 순식간에 증시 $1조 증발", effect: "bear", intensity: 6.0, duration: 2 },
+    { title: "🌊 해안가 대도시 침수 피해 심화, 보험 업계 줄파산", effect: "bear", intensity: 4.1, duration: 12 },
+
+    // --- 변동성 (Volatile - 급등락 반복) ---
+    { title: "🎢 암호화폐 법안 발표 앞두고 시장 '혼돈'", effect: "volatile", intensity: 5.0, duration: 5 },
+    { title: "⚔️ 미-중 무역 협상 극적 타결과 파기 반복", effect: "volatile", intensity: 4.5, duration: 7 },
+    { title: "🗳️ 대통령 선거 개표 중, 지지율 0.1%p 박빙 승부", effect: "volatile", intensity: 3.8, duration: 4 },
+    { title: "🔍 양자 컴퓨터 보안 해킹 가능성 논란 발생", effect: "volatile", intensity: 4.2, duration: 6 },
+    { title: "💬 유명 투자자 '지금이 고점' vs '더 간다' 팽팽한 대립", effect: "volatile", intensity: 3.0, duration: 5 },
+    { title: "❓ 정체불명의 괴선박, 영해 침범 보고... 진위 파악 중", effect: "volatile", intensity: 3.5, duration: 3 },
+    { title: "💎 희토류 매장량 과장 논란, 광산 기업 조사 착수", effect: "volatile", intensity: 3.2, duration: 5 },
+    { title: "🌡️ 기상청 '올해 가장 더운 여름' vs '기록적 폭우' 오보 소동", effect: "volatile", intensity: 2.5, duration: 4 },
+    { title: "💊 기적의 비만 치료제, 부작용 루머에 주가 널뛰기", effect: "volatile", intensity: 4.7, duration: 6 },
+    { title: "🏛️ 금리 동결 발표 직후 의장의 '매파적' 발언 파장", effect: "volatile", intensity: 3.4, duration: 3 },
+    { title: "🌑 달 기지 건설 계획, 예산 삭감 소식에 관련주 요동", effect: "volatile", intensity: 2.8, duration: 5 },
+    { title: "📱 신형 스마트폰 발열 이슈 vs 소프트웨어 해결 가능성", effect: "volatile", intensity: 2.2, duration: 4 },
+    { title: "🎤 월드스타 은퇴 선언... 소속사 부인 공방전", effect: "volatile", intensity: 3.1, duration: 3 },
+    { title: "🏭 로봇 자동화 공장, 노사 갈등으로 생산 조절", effect: "volatile", intensity: 2.6, duration: 5 },
+    { title: "🛸 미 국방부 'UFO 실체 인정' 공식 브리핑 준비 중", effect: "volatile", intensity: 5.5, duration: 8 },
+    { title: "📉 공매도 세력 vs 개인 투자자, 특정 종목 '전쟁'", effect: "volatile", intensity: 6.0, duration: 10 },
+    { title: "🧪 상온 핵융합 재현 실험 중... 내일 결과 발표", effect: "volatile", intensity: 5.8, duration: 2 },
+    { title: "📦 배송 드론 추락 사고 발생, 법적 규제 논의 시작", effect: "volatile", intensity: 2.4, duration: 4 },
+    { title: "💬 세계 경제 포럼, 'AI 규제'를 둘러싼 국가별 갈등", effect: "volatile", intensity: 2.7, duration: 6 },
+    { title: "🌊 해저 터널 굴착 중 대량 침수 사고... 공사 지속 여부 불투명", effect: "volatile", intensity: 3.3, duration: 5 },
+    { title: "💰 대형 고래 지갑 이동 포착, 시장 투매 공포 확산", effect: "volatile", intensity: 4.4, duration: 3 },
+    { title: "🚧 메타버스 플랫폼 서비스 종료설... 이용자들 반발", effect: "volatile", intensity: 2.9, duration: 4 },
+    { title: "🌲 아마존 산불 진화 소식과 재발화 우려 교차", effect: "volatile", intensity: 2.1, duration: 5 },
+    { title: "🏦 시중 은행 수수료 인상안 발표... 정부 압박에 재검토", effect: "volatile", intensity: 1.8, duration: 3 },
+    { title: "🛒 유통 공룡의 오프라인 매장 매각설... 주주들 반응 엇갈려", effect: "volatile", intensity: 2.5, duration: 5 },
+
+    // --- 안정/횡보 (Calm - 평온한 시장) ---
+    { title: "💬 시장 관망세 지속, 뚜렷한 모멘텀 부재", effect: "calm", intensity: 0.2, duration: 10 },
+    { title: "☕ 중앙은행 위원들 '신중한 접근' 한목소리", effect: "calm", intensity: 0.3, duration: 15 },
+    { title: "📅 분기 실적 발표 앞두고 숨 고르기 장세", effect: "calm", intensity: 0.4, duration: 7 },
+    { title: "🧘 계절적 비수기 진입, 거래량 최저 수준", effect: "calm", intensity: 0.1, duration: 12 },
+    { title: "💤 대형 악재 해소 이후 평온을 되찾은 시장", effect: "calm", intensity: 0.5, duration: 8 },
+    { title: "📊 전문가들 '당분간 큰 변동 없을 것' 전망", effect: "calm", intensity: 0.2, duration: 20 },
+    { title: "📉 인플레이션 안정화 단계 진입, 지표 정체", effect: "calm", intensity: 0.3, duration: 14 },
+    { title: "🕊️ 평화 협정 논의 시작, 지정학적 위험 감소", effect: "calm", intensity: 0.4, duration: 10 },
+    { title: "🏭 공장 가동률 정상 범위 유지, 특이사항 없음", effect: "calm", intensity: 0.2, duration: 18 },
+    { title: "📦 재고 수준 적정치 유지, 수급 안정세", effect: "calm", intensity: 0.3, duration: 12 },
+    { title: "💬 시장은 차분히 금리 결정 기다리는 중", effect: "calm", intensity: 0.1, duration: 5 },
+    { title: "📉 환율 변동 폭 축소, 안정적 흐름 지속", effect: "calm", intensity: 0.2, duration: 15 },
+    { title: "🏦 은행권 예금 금리 소폭 하향 조정", effect: "calm", intensity: 0.3, duration: 10 },
+    { title: "🚧 인프라 공사 진행 순조, 돌발 변수 제로", effect: "calm", intensity: 0.2, duration: 20 },
+    { title: "🌐 글로벌 협약 갱신, 시장 질서 유지 확인", effect: "calm", intensity: 0.1, duration: 30 }
 ];
 
 // --- 유틸리티 및 엔진 ---
@@ -252,6 +352,7 @@ function nextDay(days) {
         checkStageClear();
     }
     updateAndDraw();
+    checkStageClear();
 }
 
 function checkStageClear() {
@@ -275,18 +376,46 @@ function handleTradeAll(a) {
         alert("💡 [전액 매수 안전 안내]\n\n현재 청산 기준(10%)에서 즉시 청산을 방지하기 위해\n시스템이 레버리지 배율(10x~30x)에 맞춰 '생존 현금'을 자동으로 남깁니다.\n배율이 높을수록 더 많은 현금을 보존하여 변동성을 견디게 합니다.");
         firstBuyAll = false;
     }
+    
     let p = gameState.price, lev = selectedLev, feeRate = 0.0015, amt = 0;
-    if (a === 'buy') { 
-        let costPerShare = (p / lev) + (p * feeRate); 
+    
+    if (a === 'buy') {
+        // --- 개선된 안전 전액 매수 로직 (중복 매수 방지 및 자산 기반 계산) ---
+        // 1. 목표 안전 사용률 결정 (배율이 높을수록 더 많은 현금을 남김)
+        let safeUsageRate = 1.0 - (lev * 0.02); // 10배:0.8, 20배:0.6, 30배:0.4
+        safeUsageRate = Math.max(0.3, Math.min(0.98, safeUsageRate));
         
-        // --- 10x, 20x, 30x 레버리지 전용 안전 공식 ---
-        // 배율이 높을수록 증거금 대비 여유 현금을 더 많이 남깁니다.
-        let safeUsageRate = 1.0 - (lev * 0.02); // 10배:80%, 20배:60%, 30배:40% 근처
-        safeUsageRate = Math.max(0.3, Math.min(0.98, safeUsageRate)); 
+        // 2. 현재 선택된 모드(롱/숏)의 포지션 가치 확인
+        let currentPosVal = (currentTradeMode === 'long') ? (gameState.shares * p) : (gameState.inv_shares * p);
         
-        amt = Math.floor((gameState.money * safeUsageRate) / costPerShare); 
+        // 3. 목표로 하는 '안전한' 총 포지션 가치 계산 (내 총자산 기준)
+        let targetTotalPosVal = gameState.total_asset * lev * safeUsageRate;
+        
+        // 4. 추가로 더 살 수 있는 가치 계산
+        let additionalValNeeded = targetTotalPosVal - currentPosVal;
+        
+        if (additionalValNeeded <= 0) {
+            // 이미 안전 한도만큼 샀거나, 그 이상 보유 중인 경우
+            showFloatingText("⚠️ 이미 안전 한도까지 매수되었습니다.", false);
+            return;
+        }
+        
+        // 5. 필요한 수량 계산 및 보유 현금 한도 내에서 최종 결정
+        let costPerShare = (p / lev) + (p * feeRate);
+        amt = Math.floor(additionalValNeeded / p);
+        
+        // 실제 현금으로 살 수 있는 최대치와 비교 (이중 안전장치)
+        let maxByCash = Math.floor(gameState.money / costPerShare);
+        amt = Math.min(amt, maxByCash);
+        
+        if (amt <= 0) {
+            showFloatingText("⚠️ 추가 매수 가능한 현금이 부족합니다.", false);
+            return;
+        }
     }
-    else { amt = (currentTradeMode === 'long') ? gameState.shares : gameState.inv_shares; }
+    else { 
+        amt = (currentTradeMode === 'long') ? gameState.shares : gameState.inv_shares; 
+    }
     
     if (amt <= 0) return;
     document.getElementById('trade-amount').value = Math.floor(amt);
@@ -328,6 +457,7 @@ function trade(act) {
         if (gameState.inv_shares <= 0) { gameState.inv_shares = 0; gameState.inv_avg_price = 0; gameState.inv_debt = 0; }
     }
     updateAndDraw();
+    checkStageClear();
 }
 
 const ITEM_INFO = {
@@ -623,54 +753,50 @@ function updateAndDraw() {
     userShapes.forEach(s => shapes.push(s));
 
     const layout = {
-        paper_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', plot_bgcolor: isDark ? '#0a0b10' : '#f0f2f5',
-        font: { color: isDark ? '#00f2ff' : '#1a2a3a', size: 10 },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: isDark ? '#e0f2f1' : '#2c3e50', size: 10, family: 'Inter, sans-serif' },
         showlegend: false, dragmode: currentDragMode, 
-        margin: { t: 10, b: 65, l: 10, r: 60 },
+        margin: { t: 10, b: 40, l: 10, r: 50 },
         xaxis: { 
             tickvals: tickIndices.map(i => displayHist[i].day), 
             ticktext: tickIndices.map(i => displayHist[i].label), 
-            gridcolor: 'rgba(128,128,128,0.1)', 
+            gridcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
+            linecolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
             range: currentRange, 
             fixedrange: false,
-            tickfont: { size: isMobile ? 9 : 10 },
-            rangeslider: { 
-                visible: true, 
-                thickness: 0.08,
-                bgcolor: isDark ? '#15171e' : '#e0e0e0',
-                bordercolor: 'rgba(128,128,128,0.3)',
-                borderwidth: 1,
-                yaxis: { rangemode: 'fixed' }
-            }
+            tickfont: { size: isMobile ? 9 : 10, color: isDark ? 'rgba(224,242,241,0.6)' : '#2c3e50' },
+            rangeslider: { visible: false } // 공간 확보를 위해 슬라이더 숨김 (필요시 true)
         },
         yaxis: { 
             side: 'right', 
-            gridcolor: 'rgba(128,128,128,0.1)', 
-            domain: anyInd ? [0.4, 1] : [0.1, 1],
-            tickfont: { color: isDark ? '#00f2ff' : '#1a2a3a' }
+            gridcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
+            linecolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            domain: anyInd ? [0.4, 1] : [0.05, 1],
+            tickfont: { color: isDark ? '#00ffa3' : '#2e7d32', weight: 'bold' },
+            tickformat: '$,.0f'
         },
         yaxis2: { 
             overlaying: 'y', 
             showgrid: false, 
             showticklabels: false, 
-            domain: anyInd ? [0.4, 0.6] : [0.1, 0.3], 
-            opacity: 0.15 
+            domain: anyInd ? [0.4, 0.55] : [0.05, 0.2], 
+            opacity: 0.1 
         },
         yaxis3: { 
             side: 'right', 
-            gridcolor: 'rgba(128,128,128,0.1)', 
+            gridcolor: 'rgba(128,128,128,0.05)', 
             domain: [0, 0.3], 
-            range: [-150, 200],
+            range: [-300, 300],
             visible: anyInd,
             tickfont: { 
-                color: isDark ? '#ffca28' : '#e65100',
-                size: 11,
+                color: isDark ? '#ffcc00' : '#f57c00',
+                size: 10,
                 fontweight: 'bold'
             },
-            zerolinecolor: isDark ? 'rgba(255,202,40,0.2)' : 'rgba(230,81,0,0.2)'
+            zerolinecolor: 'rgba(255,255,255,0.1)'
         },
         shapes: shapes,
-        annotations: annotations // 이 부분이 드디어 추가되었습니다.
+        annotations: annotations
     };
 
     const config = { displaylogo: false, responsive: true, scrollZoom: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoom2d'] };
@@ -689,20 +815,75 @@ function updateUI(s) {
     const stage = STAGES[s.current_stage_idx] || STAGES[STAGES.length - 1];
     const newsHTML = s.news_history.slice().reverse().map(n => `<div class="news-item"><b>${n.day}일:</b> ${n.title}</div>`).join('');
     
-    const elements = {
-        'current-stage-num-side': stage.stage, 'current-stage-num-mobile': stage.stage,
-        'target-money-side': `$${stage.target.toLocaleString()}`, 'target-money-mobile': stage.target.toLocaleString(),
-        'remaining-days-mobile': Math.max(0, stage.days - s.day), 'news-list': newsHTML, 'news-list-mobile': newsHTML,
-        'stat-insight-lv': s.skills.insight, 'stat-risk-lv': s.skills.risk, 'stat-credit-lv': s.skills.credit,
-        'skill-insight-lv': s.skills.insight, 'skill-risk-lv': s.skills.risk, 'skill-credit-lv': s.skills.credit,
-        'skill-points-val': s.skill_points,
-        'stat-insight-bar': `${s.skills.insight * 20}%`, 'stat-risk-bar': `${s.skills.risk * 20}%`, 'stat-credit-bar': `${s.skills.credit * 20}%`,
-        'stage-progress-bar-mobile': `${Math.min(100, (s.money / stage.target) * 100)}%`
+    // 텍스트 정보 업데이트
+    const textUpdates = {
+        'current-stage-num-side': stage.stage, 
+        'current-stage-num-mobile': stage.stage,
+        'target-money-side': `$${stage.target.toLocaleString()}`, 
+        'target-money-mobile': stage.target.toLocaleString(),
+        'remaining-days-mobile': Math.max(0, stage.days - s.day), 
+        'news-list': newsHTML, 
+        'news-list-mobile': newsHTML,
+        'stat-insight-lv': s.skills.insight, 
+        'stat-risk-lv': s.skills.risk, 
+        'stat-credit-lv': s.skills.credit,
+        'skill-insight-lv': s.skills.insight, 
+        'skill-risk-lv': s.skills.risk, 
+        'skill-credit-lv': s.skills.credit,
+        'skill-points-val': s.skill_points
     };
-    for (let id in elements) { let el = document.getElementById(id); if (el) { if (id.includes('bar')) el.style.width = elements[id]; else if (id.includes('news-list')) el.innerHTML = elements[id]; else el.innerText = elements[id]; } }
-    for (let item in s.items) { const btn = document.getElementById(`item-${item}`); if (btn) { btn.innerText = `${ITEM_INFO[item].name.split(' ')[0]} ${s.items[item]}`; btn.disabled = (s.items[item] <= 0); btn.style.opacity = (s.items[item] > 0) ? "1" : "0.3"; } }
+    
+    for (let id in textUpdates) {
+        let el = document.getElementById(id);
+        if (el) {
+            if (id.includes('news-list')) el.innerHTML = textUpdates[id];
+            else el.innerText = textUpdates[id];
+        }
+    }
+
+    // --- 진행도 게이지(Progress Bar) 업데이트 ---
+    // 현금 보유량 기준으로 목표 달성률 계산
+    const progressPercent = Math.min(100, (s.money / stage.target) * 100);
+    
+    // 1. 모바일 상단 게이지
+    const mobileBar = document.getElementById('stage-progress-bar-mobile');
+    if (mobileBar) {
+        mobileBar.style.setProperty('width', progressPercent + '%', 'important');
+    }
+    
+    // 2. 사이드바 게이지
+    const sideBar = document.getElementById('stage-progress-bar-side');
+    if (sideBar) {
+        sideBar.style.setProperty('width', progressPercent + '%', 'important');
+    }
+
+    // 3. 능력치 바 게이지
+    const skillBars = {
+        'stat-insight-bar': s.skills.insight * 20,
+        'stat-risk-bar': s.skills.risk * 20,
+        'stat-credit-bar': s.skills.credit * 20
+    };
+    for (let id in skillBars) {
+        let el = document.getElementById(id);
+        if (el) el.style.width = skillBars[id] + '%';
+    }
+
+    // 아이템 수량 업데이트
+    for (let item in s.items) { 
+        const btn = document.getElementById(`item-${item}`); 
+        if (btn) { 
+            btn.innerText = `${ITEM_INFO[item].name.split(' ')[0]} ${s.items[item]}`; 
+            btn.disabled = (s.items[item] <= 0); 
+            btn.style.opacity = (s.items[item] > 0) ? "1" : "0.3"; 
+        } 
+    }
+
+    // 계급 업데이트
     const rank = s.total_asset >= 1000000000000 ? "💎 투자의 신" : s.total_asset >= 100000000 ? "🏆 전설" : s.total_asset >= 1000000 ? "🎩 슈퍼개미" : "흙수저";
-    if(document.getElementById('player-rank-mobile')) document.getElementById('player-rank-mobile').innerText = rank;
+    const rankMobile = document.getElementById('player-rank-mobile');
+    if(rankMobile) rankMobile.innerText = rank;
+    const rankSide = document.getElementById('player-rank-side');
+    if(rankSide) rankSide.innerText = rank;
 }
 
 function showShopMenu() { 
@@ -737,6 +918,7 @@ function showStageIntro() {
 function startStage() {
     document.getElementById('stage-intro-msg').style.display = 'none';
     updateAndDraw();
+    checkStageClear();
 }
 
 function closeStageOverlay() { 

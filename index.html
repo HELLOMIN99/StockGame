@@ -148,16 +148,19 @@
                         </div>
                     </div>
 
-                    <div class="mode-switch">
-                        <button id="mode-long" class="btn-tf active" onclick="setTradeMode('long')">📈 LONG</button>
-                        <button id="mode-inv" class="btn-tf" onclick="setTradeMode('inv')">📉 SHORT</button>
+                    <div class="mode-switch" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+                        <button id="mode-long" class="btn-tf active" onclick="setTradeMode('long')" style="padding:12px 0;">📈 LONG</button>
+                        <button id="mode-inv" class="btn-tf" onclick="setTradeMode('inv')" style="padding:12px 0;">📉 SHORT</button>
                     </div>
 
-                    <div class="trade-grid">
-                        <button class="trade btn-buy" onclick="handleTrade('buy')">매수</button>
-                        <button class="trade btn-sell" onclick="handleTrade('sell')">매도</button>
-                        <button class="btn-tool-sub" style="padding:12px !important; font-size:14px !important;" onclick="handleTradeAll('buy')">전량 매수</button>
-                        <button class="btn-tool-sub" style="padding:12px !important; font-size:14px !important;" onclick="handleTradeAll('sell')">전량 매도</button>
+                    <div class="trade-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:8px;">
+                        <button class="trade btn-buy" onclick="handleTrade('buy')" style="padding:15px 0;">매수</button>
+                        <button class="trade btn-sell" onclick="handleTrade('sell')" style="padding:15px 0;">매도</button>
+                    </div>
+
+                    <div class="trade-grid-sub" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:10px;">
+                        <button class="btn-tool-sub" onclick="handleTradeAll('buy')" style="padding:10px 0; font-size:13px !important; border-color:var(--neon-green); color:var(--neon-green); background:rgba(46,204,113,0.05);">전량 매수</button>
+                        <button class="btn-tool-sub" onclick="handleTradeAll('sell')" style="padding:10px 0; font-size:13px !important; border-color:var(--neon-red); color:var(--neon-red); background:rgba(231,76,60,0.05);">전량 매도</button>
                     </div>
                     <div style="display:flex; gap:5px; margin-top:5px;">
                         <button class="trade btn-next-day" style="flex:1;" onclick="nextDay(1)">NEXT DAY</button>
