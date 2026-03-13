@@ -1,7 +1,34 @@
-// --- 상태 변수 ---
+// --- 글로벌 상태 관리 ---
 let currentTheme = 'dark', currentTradeMode = 'long', gameState = null, marketEnergy = 1.0;
 let currentTF = 'daily', showInd = { ma: true, bb: false, vol: false, macd: false, rsi: false, stoch: false, cci: false, adx: false };
 let currentRange = null, currentDragMode = 'pan', selectedLev = 1, firstBuyAll = true, userShapes = [];
+
+// --- UI 엘리먼트 캐싱 (성능 최적화) ---
+const UI = {
+    money: null, totalAsset: null, shares: null, invShares: null, totalDebt: null,
+    stageNum: null, stageTarget: null, remainingDays: null, newsList: null,
+    skillLvs: { insight: null, risk: null, credit: null },
+    skillBars: { insight: null, risk: null, credit: null },
+    skillPoints: null, items: {}
+};
+
+function initUICache() {
+    UI.money = document.getElementById('money');
+    UI.totalAsset = document.getElementById('total_asset');
+    UI.shares = document.getElementById('shares');
+    UI.invShares = document.getElementById('inv_shares');
+    UI.totalDebt = document.getElementById('total_debt');
+    UI.stageNum = document.getElementById('current-stage-num-side');
+    UI.stageTarget = document.getElementById('target-money-side');
+    UI.remainingDays = document.getElementById('remaining-days-mobile');
+    UI.newsList = document.getElementById('news-list');
+    UI.skillPoints = document.getElementById('skill-points-val');
+    
+    ['insight', 'risk', 'credit'].forEach(sk => {
+        UI.skillLvs[sk] = document.getElementById(`stat-${sk}-lv`) || document.getElementById(`skill-${sk}-lv`);
+        UI.skillBars[sk] = document.getElementById(`stat-${sk}-bar`);
+    });
+}
 
 // --- 탭 전환 ---
 function switchTab(tabId, btn) {
