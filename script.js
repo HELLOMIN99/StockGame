@@ -27,7 +27,7 @@ function toggleTheme() {
     currentTheme = (currentTheme === 'light') ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
     const themeBtn = document.getElementById('btn-theme');
-    if (themeBtn) { themeBtn.innerText = (currentTheme === 'dark') ? "☀️테마" : "🌙테마"; }
+    if (themeBtn) { themeBtn.innerText = (currentTheme === 'dark') ? "☀️" : "🌙"; }
     
     // 테마 변경 시 그리기 모드 색상도 즉시 업데이트
     if (currentDragMode === 'drawline') {
@@ -528,6 +528,7 @@ function updateAndDraw() {
 
     if (showInd.macd) {
         const ema = (data, p) => {
+            if (data.length === 0) return [];
             let res = [data[0]]; const k = 2 / (p + 1);
             for(let i=1; i<data.length; i++) res.push(data[i]*k + res[i-1]*(1-k));
             return res;
@@ -535,7 +536,13 @@ function updateAndDraw() {
         const closes = hist.map(h => h.close);
         const e12 = ema(closes, 12), e26 = ema(closes, 26);
         const macdLine = e12.map((v, i) => v - e26[i]);
+        const signalLine = ema(macdLine, 9);
+        const histLine = macdLine.map((v, i) => v - signalLine[i]);
+
+        const xDays = displayHist.map(h => h.day);
         renderOscillator('macd', macdLine.slice(startIndex), '#2196f3', 'MACD');
+        traces.push({ x: xDays, y: signalLine.slice(startIndex), type: 'scatter', mode: 'lines', line: { color: '#ff9800', width: 1, dash: 'dot' }, yaxis: 'y3', name: 'Signal' });
+        traces.push({ x: xDays, y: histLine.slice(startIndex), type: 'bar', marker: { color: histLine.slice(startIndex).map(v => v >= 0 ? 'rgba(255,49,49,0.3)' : 'rgba(33,150,243,0.3)') }, yaxis: 'y3', name: 'Hist' });
     }
 
     if (showInd.stoch) {
@@ -564,7 +571,6 @@ function updateAndDraw() {
     if (showInd.adx) {
         const period = 14; 
         let trs = [], plusDMs = [], minusDMs = [];
-        // 1. TR 및 DM 계산
         for (let i = 1; i < hist.length; i++) {
             const h = hist[i], p = hist[i-1];
             const tr = Math.max(h.high - h.low, Math.abs(h.high - p.close), Math.abs(h.low - p.close));
@@ -572,25 +578,24 @@ function updateAndDraw() {
             const minusDM = (p.low - h.low > h.high - p.high) ? Math.max(p.low - h.low, 0) : 0;
             trs.push(tr); plusDMs.push(plusDM); minusDMs.push(minusDM);
         }
-        // 2. Smoothing 및 ADX 계산
+        
         let adxFull = new Array(hist.length).fill(null);
         let sTR = 0, sPDM = 0, sMDM = 0;
         for (let i = 0; i < trs.length; i++) {
-            sTR += trs[i]; sPDM += plusDMs[i]; sMDM += minusDMs[i];
+            if (i < period) {
+                sTR += trs[i]; sPDM += plusDMs[i]; sMDM += minusDMs[i];
+            } else {
+                sTR = sTR - (sTR / period) + trs[i];
+                sPDM = sPDM - (sPDM / period) + plusDMs[i];
+                sMDM = sMDM - (sMDM / period) + minusDMs[i];
+            }
             if (i >= period - 1) {
-                if (i > period - 1) {
-                    sTR = sTR - (sTR / period) + trs[i];
-                    sPDM = sPDM - (sPDM / period) + plusDMs[i];
-                    sMDM = sMDM - (sMDM / period) + minusDMs[i];
-                }
-                const plusDI = 100 * (sPDM / sTR);
-                const minusDI = 100 * (sMDM / sTR);
+                const plusDI = 100 * (sPDM / (sTR || 1));
+                const minusDI = 100 * (sMDM / (sTR || 1));
                 const dx = 100 * Math.abs(plusDI - minusDI) / (plusDI + minusDI || 1);
-                // 임시 저장 후 다시 스무딩하여 ADX 산출
                 adxFull[i + 1] = dx; 
             }
         }
-        // DX를 다시 한 번 스무딩하여 최종 ADX 산출
         const adxData = [];
         for (let i = startIndex; i < hist.length; i++) {
             const slice = adxFull.slice(Math.max(0, i - period + 1), i + 1).filter(v => v !== null);
@@ -599,6 +604,7 @@ function updateAndDraw() {
         }
         renderOscillator('adx', adxData, '#00f2ff', 'ADX');
     }
+
 
     // 지표가 하나라도 켜져 있는지 확인
     const anyInd = showInd.rsi || showInd.macd || showInd.stoch || showInd.cci || showInd.adx;
@@ -687,7 +693,6 @@ function updateAndDraw() {
             side: 'right', 
             gridcolor: 'rgba(128,128,128,0.05)', 
             domain: [0, 0.3], 
-            range: [-300, 300],
             visible: anyInd,
             tickfont: { 
                 color: isDark ? '#ffcc00' : '#f57c00',
