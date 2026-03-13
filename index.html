@@ -108,6 +108,19 @@
             </div>
         </div>
 
+        <!-- 모바일 전용 상태바 (차트와 매매 버튼 사이 빈 공간 활용) -->
+        <div id="mobile-top-status" class="mobile-only-status">
+            <div class="merged-info-bar">
+                <span id="player-rank-mobile" class="rank-badge">흙수저</span>
+                <span class="st-num">ST <span id="current-stage-num-mobile">1</span></span>
+                <span class="target-val">목표 $<span id="target-money-mobile">0</span></span>
+                <span class="days-left">남은 <span id="remaining-days-mobile">0</span>일</span>
+            </div>
+            <div class="progress-container-mobile">
+                <div id="stage-progress-bar-mobile" class="progress-bar-mobile"></div>
+            </div>
+        </div>
+
         <div class="trade-controls">
             <div class="tab-nav">
                 <button class="tab-btn active" onclick="switchTab('pane-trade', this)">📊 TRADE</button>
@@ -135,15 +148,6 @@
                         </div>
                     </div>
 
-                    <div class="inventory-bar">
-                        <button class="btn-tool" id="item-time_stopper" onclick="useItem('time_stopper')" disabled>⏳ 0</button>
-                        <button class="btn-tool" id="item-money_washer" onclick="useItem('money_washer')" disabled>🧼 0</button>
-                        <button class="btn-tool" id="item-future_vision" onclick="useItem('future_vision')" disabled>🔮 0</button>
-                        <button class="btn-tool" id="item-news_manipulator" onclick="useItem('news_manipulator')" disabled>📢 0</button>
-                        <button class="btn-tool" id="btn-theme" onclick="toggleTheme()">🌓테마</button>
-                        <button class="btn-tool btn-reset-red" onclick="resetGame()">🆕</button>
-                    </div>
-
                     <div class="mode-switch">
                         <button id="mode-long" class="btn-tf active" onclick="setTradeMode('long')">📈 LONG</button>
                         <button id="mode-inv" class="btn-tf" onclick="setTradeMode('inv')">📉 SHORT</button>
@@ -163,19 +167,20 @@
 
                 <div id="pane-stats" class="tab-pane">
                     <div class="trade-section stats-section" style="padding:8px;">
+                        <div class="inventory-grid-container">
+                            <button class="btn-inventory" id="item-time_stopper" onclick="useItem('time_stopper')" disabled>⏳0</button>
+                            <button class="btn-inventory" id="item-money_washer" onclick="useItem('money_washer')" disabled>🧼0</button>
+                            <button class="btn-inventory" id="item-future_vision" onclick="useItem('future_vision')" disabled>🔮0</button>
+                            <button class="btn-inventory" id="item-news_manipulator" onclick="useItem('news_manipulator')" disabled>📢0</button>
+                            <button class="btn-inventory btn-sys" id="btn-theme" onclick="toggleTheme()">☀️</button>
+                            <button class="btn-inventory btn-reset-only" onclick="resetGame()">🆕</button>
+                        </div>
+
+                        <div style="font-size:10px; opacity:0.7; margin: 15px 0 8px 0; text-align:center; letter-spacing: 2px;">📊 STATUS</div>
                         <div class="stat-row"><span class="stat-label" style="cursor:pointer;" onclick="showSkillDesc('insight')">🔍 통찰</span><div class="stat-bar-bg"><div id="stat-insight-bar" class="stat-bar-fill" style="width:0%;"></div></div><span class="stat-lv">LV<span id="stat-insight-lv">0</span></span></div>
                         <div class="stat-row"><span class="stat-label" style="cursor:pointer;" onclick="showSkillDesc('risk')">🛡️ 위험</span><div class="stat-bar-bg"><div id="stat-risk-bar" class="stat-bar-fill" style="width:0%;"></div></div><span class="stat-lv">LV<span id="stat-risk-lv">0</span></span></div>
                         <div class="stat-row"><span class="stat-label" style="cursor:pointer;" onclick="showSkillDesc('credit')">💳 신용</span><div class="stat-bar-bg"><div id="stat-credit-bar" class="stat-bar-fill" style="width:0%;"></div></div><span class="stat-lv">LV<span id="stat-credit-lv">0</span></span></div>
                         
-                        <div class="merged-info-bar" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; background:rgba(0,0,0,0.25); padding:8px; border-radius:8px; font-size:11px; border:1px solid rgba(255,255,255,0.05);">
-                            <span id="player-rank-mobile" class="rank-badge" style="margin:0; padding:2px 8px;">흙수저</span>
-                            <span style="color:var(--neon-yellow); font-weight:bold;">ST <span id="current-stage-num-mobile">1</span></span>
-                            <span>목표 $<span id="target-money-mobile">0</span></span>
-                            <span style="color:var(--neon-pink);">남은 <span id="remaining-days-mobile">0</span>일</span>
-                        </div>
-                        <div style="width:100%; height:6px; background:#222; border-radius:3px; margin-top:5px; overflow:hidden;">
-                            <div id="stage-progress-bar-mobile" style="height:100%; background:var(--neon-pink); width:0%; transition: width 0.5s;"></div>
-                        </div>
                         <div class="mobile-news-area" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
                             <div style="font-size:10px; opacity:0.7; margin-bottom:5px;">📜 뉴스 히스토리</div>
                             <div id="news-list-mobile" class="news-list" style="max-height:60px; overflow-y:auto; font-size:10px;"></div>

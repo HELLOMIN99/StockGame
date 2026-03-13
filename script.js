@@ -1,7 +1,7 @@
 // --- 상태 변수 ---
 let currentTheme = 'dark', currentTradeMode = 'long', gameState = null, marketEnergy = 1.0;
 let currentTF = 'daily', showInd = { ma: true, bb: false, vol: false, macd: false, rsi: false, stoch: false, cci: false, adx: false };
-let currentRange = null, currentDragMode = 'pan', selectedLev = 1, firstBuyAll = true;
+let currentRange = null, currentDragMode = 'pan', selectedLev = 1, firstBuyAll = true, userShapes = [];
 
 // --- 탭 전환 ---
 function switchTab(tabId, btn) {
@@ -28,6 +28,11 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', currentTheme);
     const themeBtn = document.getElementById('btn-theme');
     if (themeBtn) { themeBtn.innerText = (currentTheme === 'dark') ? "☀️테마" : "🌙테마"; }
+    
+    // 테마 변경 시 그리기 모드 색상도 즉시 업데이트
+    if (currentDragMode === 'drawline') {
+        setDragMode('drawline');
+    }
     updateAndDraw();
 }
 function toggleInd(n, btn) { showInd[n] = !showInd[n]; btn.classList.toggle('on', showInd[n]); updateAndDraw(); }
@@ -38,30 +43,73 @@ function changeTF(tf) {
     updateAndDraw(); 
 }
 function setLev(v, btn) { selectedLev = v; document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
-function setDragMode(m) { currentDragMode = m; Plotly.relayout('chart', { dragmode: m }); }
 
-// --- 20단계 스테이지 설정 (시작 자산 $50,000 기준 재설계) ---
+function setDragMode(m) { 
+    currentDragMode = m; 
+    let config = { dragmode: m };
+    if (m === 'drawline') {
+        // 다크모드: 형광늘색, 라이트모드: 진한 파란색
+        config.newshape = { line: { color: currentTheme === 'dark' ? '#00f2ff' : '#0040ff', width: 2 } };
+    }
+    Plotly.relayout('chart', config); 
+}
+
+function undoLastShape() {
+    const chartEl = document.getElementById('chart');
+    if (!chartEl || !chartEl.layout || !chartEl.layout.shapes) return;
+
+    // 현재 차트에서 가이드 선(dash/dot)을 제외한 사용자 선만 추출
+    let allShapes = chartEl.layout.shapes;
+    let userShapeIndices = [];
+    allShapes.forEach((s, i) => {
+        if (!s.line || (s.line.dash !== 'dot' && s.line.dash !== 'dash')) {
+            userShapeIndices.push(i);
+        }
+    });
+
+    if (userShapeIndices.length > 0) {
+        const lastIdx = userShapeIndices[userShapeIndices.length - 1];
+        allShapes.splice(lastIdx, 1); // 마지막 사용자 선 제거
+        userShapes = allShapes.filter(s => !s.line || (s.line.dash !== 'dot' && s.line.dash !== 'dash'));
+        Plotly.relayout('chart', { shapes: allShapes }); // 차트에 즉시 반영
+    }
+}
+
+function clearShapes() {
+    const chartEl = document.getElementById('chart');
+    if (!chartEl || !chartEl.layout || !chartEl.layout.shapes) return;
+
+    // 가이드 선(dash/dot)만 남기고 나머지 모두 제거
+    let remainingShapes = chartEl.layout.shapes.filter(s => 
+        s.line && (s.line.dash === 'dot' || s.line.dash === 'dash')
+    );
+    
+    userShapes = []; // 전역 변수 초기화
+    Plotly.relayout('chart', { shapes: remainingShapes }); // 차트 즉시 쇄신
+}
+
+// --- 20단계 스테이지 설정 (난이도 하향 조정) ---
 const STAGES = [
-    { stage: 1, days: 25, target: 150000, name: "튜토리얼: 첫 도약" },
-    { stage: 2, days: 50, target: 400000, name: "기초 자산 형성" },
-    { stage: 3, days: 80, target: 1000000, name: "백만 달러의 꿈" },
-    { stage: 4, days: 120, target: 3000000, name: "슈퍼 개미의 탄생" },
-    { stage: 5, days: 180, target: 10000000, name: "프로 투자자" },
-    { stage: 6, days: 250, target: 30000000, name: "자산가로 가는 길" },
-    { stage: 7, days: 350, target: 100000000, name: "억대 자산가" },
-    { stage: 8, days: 500, target: 300000000, name: "지역구 큰 손" },
-    { stage: 9, days: 700, target: 1000000000, name: "유니콘 투자자" },
-    { stage: 10, days: 900, target: 5000000000, name: "시장 지배자" },
-    { stage: 11, days: 1200, target: 20000000000, name: "데카콘 기업주" },
-    { stage: 12, days: 1500, target: 100000000000, name: "재벌가" },
-    { stage: 13, days: 1800, target: 500000000000, name: "국가급 부호" },
-    { stage: 14, days: 2200, target: 2000000000000, name: "조 단위 거부" },
-    { stage: 15, days: 2700, target: 10000000000000, name: "대륙급 거물" },
-    { stage: 16, days: 3300, target: 50000000000000, name: "지구의 주인" },
-    { stage: 17, days: 4000, target: 200000000000000, name: "행성급 부호" },
-    { stage: 18, days: 4800, target: 1000000000000000, name: "은하급 거부" },
-    { stage: 19, days: 5700, target: 5000000000000000, name: "우주의 제왕" },
-    { stage: 20, days: 6800, target: 10000000000000000, name: "투자의 신 (완성)" }
+    { stage: 1, days: 30, target: 120000, name: "튜토리얼: 첫 도약" },
+    { stage: 2, days: 60, target: 300000, name: "기초 자산 형성" },
+    { stage: 3, days: 100, target: 800000, name: "백만 달러의 꿈" },
+    { stage: 4, days: 150, target: 2000000, name: "슈퍼 개미의 탄생" },
+    { stage: 5, days: 200, target: 7000000, name: "프로 투자자" },
+    { stage: 6, days: 300, target: 20000000, name: "자산가로 가는 길" },
+    { stage: 7, days: 450, target: 70000000, name: "억대 자산가" },
+    { stage: 8, days: 600, target: 200000000, name: "지역구 큰 손" },
+    { stage: 9, days: 800, target: 700000000, name: "유니콘 투자자" },
+    { stage: 10, days: 1000, target: 3000000000, name: "시장 지배자" },
+    { stage: 11, days: 1300, target: 15000000000, name: "데카콘 기업주" },
+    { stage: 12, days: 1600, target: 80000000000, name: "재벌가" },
+    { stage: 13, days: 2000, target: 400000000000, name: "국가급 부호" },
+    { stage: 14, days: 2500, target: 1500000000000, name: "조 단위 거부" },
+    { stage: 15, days: 3000, target: 8000000000000, name: "대륙급 거물" },
+    { stage: 16, days: 3600, target: 40000000000000, name: "지구의 주인" },
+    { stage: 17, days: 4300, target: 150000000000000, name: "행성급 부호" },
+    { stage: 18, days: 5100, target: 800000000000000, name: "은하급 거부" },
+    { stage: 19, days: 6000, target: 4000000000000000, name: "우주의 제왕" },
+    { stage: 20, days: 7000, target: 10000000000000000, name: "투자의 신 (완성)" }
 ];
 
 // --- 100가지 랜덤 뉴스 풀 (대표 항목) ---
@@ -344,6 +392,18 @@ function useItem(type) {
 // --- 차트 및 UI 업데이트 ---
 function updateAndDraw() {
     if (!gameState) return;
+
+    // --- 0. 현재 차트에 있는 사용자 선들 백업 (사라짐 방지) ---
+    const chartEl = document.getElementById('chart');
+    if (chartEl && chartEl.layout && chartEl.layout.shapes) {
+        const currentOnChart = chartEl.layout.shapes.filter(s => 
+            !s.line || (s.line.dash !== 'dot' && s.line.dash !== 'dash')
+        );
+        if (currentOnChart.length > 0) {
+            userShapes = currentOnChart;
+        }
+    }
+
     const raw = gameState.history; let grouped = {}; const baseDate = new Date(2026, 2, 11);
     raw.forEach(h => {
         let dt = new Date(baseDate); dt.setDate(dt.getDate() + h.day);
@@ -372,7 +432,7 @@ function updateAndDraw() {
 
     // 1. 캔들스틱
     traces.push({
-        x: displayHist.map((_, i) => i),
+        x: displayHist.map(h => h.day),
         open: displayHist.map(h => h.open), high: displayHist.map(h => h.high),
         low: displayHist.map(h => h.low), close: displayHist.map(h => h.close),
         type: 'candlestick',
@@ -389,7 +449,7 @@ function updateAndDraw() {
                 const slice = hist.slice(Math.max(0, i - period + 1), i + 1);
                 data.push(slice.reduce((a, b) => a + b.close, 0) / slice.length);
             }
-            traces.push({ x: displayHist.map((_, i) => i), y: data, type: 'scatter', mode: 'lines', line: { width: 1, color: idx === 0 ? '#ffeb3b' : '#e91e63' }, yaxis: 'y' });
+            traces.push({ x: displayHist.map(h => h.day), y: data, type: 'scatter', mode: 'lines', line: { width: 1, color: idx === 0 ? '#ffeb3b' : '#e91e63' }, yaxis: 'y' });
         });
     }
 
@@ -403,14 +463,14 @@ function updateAndDraw() {
             upper.push(avg + 2 * stdDev); lower.push(avg - 2 * stdDev);
         }
         const bbColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,102,204,0.4)'; // 다크:연회색, 라이트:진청색
-        traces.push({ x: displayHist.map((_, i) => i), y: upper, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Upper' });
-        traces.push({ x: displayHist.map((_, i) => i), y: lower, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Lower' });
+        traces.push({ x: displayHist.map(h => h.day), y: upper, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Upper' });
+        traces.push({ x: displayHist.map(h => h.day), y: lower, type: 'scatter', mode: 'lines', line: { width: 1, color: bbColor, dash: 'dot' }, yaxis: 'y', name: 'BB Lower' });
     }
 
     // 4. Vol
     if (showInd.vol) {
         traces.push({
-            x: displayHist.map((_, i) => i), y: displayHist.map(h => h.vol),
+            x: displayHist.map(h => h.day), y: displayHist.map(h => h.vol),
             type: 'bar', marker: { color: displayHist.map(h => h.close >= h.open ? 'rgba(255,49,49,0.2)' : 'rgba(33,150,243,0.2)') },
             yaxis: 'y2'
         });
@@ -418,7 +478,7 @@ function updateAndDraw() {
 
     // 보조지표 계산 및 렌더링
     const renderOscillator = (id, data, color, name) => {
-        traces.push({ x: displayHist.map((_, i) => i), y: data, type: 'scatter', mode: 'lines', line: { color: color, width: 1.2 }, yaxis: 'y3', name: name });
+        traces.push({ x: displayHist.map(h => h.day), y: data, type: 'scatter', mode: 'lines', line: { color: color, width: 1.2 }, yaxis: 'y3', name: name });
     };
 
     if (showInd.rsi) {
@@ -515,15 +575,16 @@ function updateAndDraw() {
     // --- 가이드 선 (현재가 및 평단가) 및 라벨 생성 ---
     const shapes = [];
     const annotations = [];
-    const lastIdx = displayHist.length - 1;
+    const firstDay = displayHist[0].day;
+    const lastDay = displayHist[displayHist.length - 1].day;
     
     // 1. 현재가 가이드 선 및 라벨 (우측)
     shapes.push({
-        type: 'line', x0: 0, x1: lastIdx, y0: gameState.price, y1: gameState.price,
+        type: 'line', x0: firstDay, x1: lastDay, y0: gameState.price, y1: gameState.price,
         line: { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', width: 1, dash: 'dot' }
     });
     annotations.push({
-        x: lastIdx, y: gameState.price, text: `$${Math.floor(gameState.price).toLocaleString()}`,
+        x: lastDay, y: gameState.price, text: `$${Math.floor(gameState.price).toLocaleString()}`,
         showarrow: false, xanchor: 'left', yanchor: 'middle',
         font: { size: 10, color: '#fff', weight: 'bold' },
         bgcolor: isDark ? '#444' : '#888',
@@ -533,11 +594,11 @@ function updateAndDraw() {
     // 2. 롱 평단가 선 및 라벨 (좌측)
     if (gameState.shares > 0) {
         shapes.push({
-            type: 'line', x0: 0, x1: lastIdx, y0: gameState.avg_price, y1: gameState.avg_price,
+            type: 'line', x0: firstDay, x1: lastDay, y0: gameState.avg_price, y1: gameState.avg_price,
             line: { color: '#ff9800', width: 1.5, dash: 'dash' }
         });
         annotations.push({
-            x: 0, y: gameState.avg_price, text: `롱평단: $${Math.floor(gameState.avg_price).toLocaleString()}`,
+            x: firstDay, y: gameState.avg_price, text: `롱평단: $${Math.floor(gameState.avg_price).toLocaleString()}`,
             showarrow: false, xanchor: 'left', yanchor: 'bottom',
             font: { size: 10, color: '#fff' },
             bgcolor: 'rgba(255, 152, 0, 0.8)', xshift: 5
@@ -547,16 +608,19 @@ function updateAndDraw() {
     // 3. 인버스 평단가 선 및 라벨 (좌측)
     if (gameState.inv_shares > 0) {
         shapes.push({
-            type: 'line', x0: 0, x1: lastIdx, y0: gameState.inv_avg_price, y1: gameState.inv_avg_price,
+            type: 'line', x0: firstDay, x1: lastDay, y0: gameState.inv_avg_price, y1: gameState.inv_avg_price,
             line: { color: '#9c27b0', width: 1.5, dash: 'dash' }
         });
         annotations.push({
-            x: 0, y: gameState.inv_avg_price, text: `숏평단: $${Math.floor(gameState.inv_avg_price).toLocaleString()}`,
+            x: firstDay, y: gameState.inv_avg_price, text: `숏평단: $${Math.floor(gameState.inv_avg_price).toLocaleString()}`,
             showarrow: false, xanchor: 'left', yanchor: 'top',
             font: { size: 10, color: '#fff' },
             bgcolor: 'rgba(156, 39, 176, 0.8)', xshift: 5
         });
     }
+
+    // 4. 사용자 정의 선 추가
+    userShapes.forEach(s => shapes.push(s));
 
     const layout = {
         paper_bgcolor: isDark ? '#0a0b10' : '#f0f2f5', plot_bgcolor: isDark ? '#0a0b10' : '#f0f2f5',
@@ -564,7 +628,7 @@ function updateAndDraw() {
         showlegend: false, dragmode: currentDragMode, 
         margin: { t: 10, b: 65, l: 10, r: 60 },
         xaxis: { 
-            tickvals: tickIndices, 
+            tickvals: tickIndices.map(i => displayHist[i].day), 
             ticktext: tickIndices.map(i => displayHist[i].label), 
             gridcolor: 'rgba(128,128,128,0.1)', 
             range: currentRange, 
@@ -611,7 +675,6 @@ function updateAndDraw() {
 
     const config = { displaylogo: false, responsive: true, scrollZoom: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'zoom2d'] };
     Plotly.react('chart', traces, layout, config);
-    document.getElementById('chart').on('plotly_relayout', e => { if (e['xaxis.range[0]'] !== undefined) currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; });
     updateUI(gameState);
 }
 
@@ -691,4 +754,23 @@ window.onload = () => {
     gameState = generateInitialState(); 
     updateUI(gameState); 
     showStageIntro(); // 시작 시 인트로 표시
+
+    // 차트 이벤트 리스너 등록 (한 번만)
+    const chartEl = document.getElementById('chart');
+    if (chartEl) {
+        chartEl.on('plotly_relayout', e => { 
+            // X축 범위 저장
+            if (e['xaxis.range[0]'] !== undefined) {
+                currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; 
+            }
+            
+            // 사용자가 선을 그리거나 수정했을 때 실시간 동기화
+            // Plotly 내부 레이아웃에서 선들을 가져와 가이드 선(dot, dash)을 제외하고 저장
+            if (chartEl.layout && chartEl.layout.shapes) {
+                userShapes = chartEl.layout.shapes.filter(s => 
+                    s.line && s.line.dash !== 'dot' && s.line.dash !== 'dash'
+                );
+            }
+        });
+    }
 };
