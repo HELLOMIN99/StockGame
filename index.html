@@ -9,70 +9,6 @@
 </head>
 <body>
     <div class="game-board">
-        <!-- 오버레이 메시지 (기존 동일) -->
-        <div id="stage-intro-msg" class="liquidation-overlay" style="display:none; z-index: 4000;">
-            <div class="intro-box neon-border">
-                <h2 id="intro-stage-num" style="color:var(--neon-blue); font-size: 1.2rem; margin:0;">STAGE 1</h2>
-                <h1 id="intro-stage-name" class="intro-stage-name">튜토리얼: 첫 도약</h1>
-                <div class="intro-info-card" style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin: 25px 0; border: 1px solid rgba(255,255,255,0.1);">
-                    <p style="margin-bottom: 10px; opacity: 0.8; font-size: 0.9rem;">목표 자산</p>
-                    <h2 id="intro-target" class="intro-target-val">$150,000</h2>
-                    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
-                    <p style="margin-bottom: 5px; opacity: 0.8; font-size: 0.9rem;">제한 시간</p>
-                    <h3 id="intro-days" style="color:var(--neon-red); font-size: 1.5rem; margin:0;">25일</h3>
-                </div>
-                <button onclick="startStage()" class="trade btn-buy intro-start-btn" style="width:100%; height: 65px; font-size: 1.4rem; font-weight: 900; cursor: pointer; border-radius: 10px; box-shadow: 0 0 20px rgba(46,204,113,0.3);">투자 시작</button>
-            </div>
-        </div>
-        <div id="liquidation-msg" class="liquidation-overlay" style="display:none;">
-            <h2>🚨 강제 청산 🚨</h2><p>포지션이 종료되었습니다.</p>
-            <button class="btn-tool" onclick="resetGame()">다시 시작</button>
-        </div>
-        <div id="gameover-msg" class="liquidation-overlay" style="display:none;">
-            <h2>💀 MISSION FAILED 💀</h2><p id="fail-reason"></p>
-            <button class="btn-tool" onclick="resetGame()">다시 도전</button>
-        </div>
-        <div id="gameclear-msg" class="liquidation-overlay" style="display:none;">
-            <h2>🎉 ALL CLEAR! 🎉</h2><p id="clear-final-asset"></p>
-            <button class="btn-tool" onclick="resetGame()">명예의 전당</button>
-        </div>
-        <div id="news-msg" class="liquidation-overlay" style="display:none;">
-            <h2>📰 경제 속보</h2><p id="news-title" style="padding:20px; font-weight:bold;"></p>
-            <button class="btn-tool" onclick="closeNewsOverlay()">확인</button>
-        </div>
-        <div id="stageclear-msg" class="liquidation-overlay" style="display:none;">
-            <h2>✨ STAGE CLEAR! ✨</h2><p id="stage-clear-text"></p>
-            <div style="display:flex; gap:10px;">
-                <button class="btn-tool" onclick="showSkillMenu()">능력 강화</button>
-                <button class="btn-tool" onclick="showShopMenu()">블랙마켓</button>
-                <button class="btn-tool" onclick="closeStageOverlay()">다음 날</button>
-            </div>
-        </div>
-
-        <!-- 팝업 메뉴 (기존 동일) -->
-        <div id="shop-msg" class="liquidation-overlay" style="display:none;">
-            <h2>🖤 BLACK MARKET</h2>
-            <p>보유: <span id="shop-cash">$0</span></p>
-            <div class="tool-grid" style="width:90%;">
-                <button class="btn-tf" onclick="buyItem('time_stopper', 50000)">⏳ 정지</button>
-                <button class="btn-tf" onclick="buyItem('money_washer', 100000)">🧼 탕감</button>
-                <button class="btn-tf" onclick="buyItem('future_vision', 200000)">🔮 예보</button>
-                <button class="btn-tf" onclick="buyItem('news_manipulator', 150000)">📢 조작</button>
-            </div>
-            <button class="btn-tool" style="margin-top:20px;" onclick="closeShopMenu()">나가기</button>
-        </div>
-
-        <div id="skill-msg" class="liquidation-overlay" style="display:none;">
-            <h2>🛠️ 능력 강화</h2>
-            <p>포인트: <span id="skill-points-val">0</span></p>
-            <div style="display:flex; flex-direction:column; gap:10px; width:80%;">
-                <button class="btn-tf" onclick="upgradeSkill('insight')">🔍 통찰력 LV<span id="skill-insight-lv">0</span></button>
-                <button class="btn-tf" onclick="upgradeSkill('risk')">🛡️ 위험관리 LV<span id="skill-risk-lv">0</span></button>
-                <button class="btn-tf" onclick="upgradeSkill('credit')">💳 신용도 LV<span id="skill-credit-lv">0</span></button>
-            </div>
-            <button class="btn-tool" style="margin-top:20px;" onclick="closeSkillMenu()">완료</button>
-        </div>
-
         <h1>📊 ZERO TO INFINITY</h1>
 
         <div class="dashboard">
@@ -108,7 +44,7 @@
             </div>
         </div>
 
-        <!-- 모바일 전용 상태바 (차트와 매매 버튼 사이 빈 공간 활용) -->
+        <!-- 모바일 전용 상태바 -->
         <div id="mobile-top-status" class="mobile-only-status">
             <div class="merged-info-bar">
                 <span id="player-rank-mobile" class="rank-badge">흙수저</span>
@@ -171,12 +107,15 @@
                 <div id="pane-stats" class="tab-pane">
                     <div class="trade-section stats-section" style="padding:8px;">
                         <div class="inventory-grid-container">
-                            <button class="btn-inventory" id="item-time_stopper" onclick="useItem('time_stopper')" disabled>⏳0</button>
-                            <button class="btn-inventory" id="item-money_washer" onclick="useItem('money_washer')" disabled>🧼0</button>
-                            <button class="btn-inventory" id="item-future_vision" onclick="useItem('future_vision')" disabled>🔮0</button>
-                            <button class="btn-inventory" id="item-news_manipulator" onclick="useItem('news_manipulator')" disabled>📢0</button>
-                            <button class="btn-inventory btn-sys" id="btn-theme" onclick="toggleTheme()">☀️</button>
-                            <button class="btn-inventory btn-reset-only" onclick="resetGame()">🆕</button>
+                            <button class="btn-inventory" id="item-time_stopper" onclick="useItem('time_stopper')" title="시간 정지" disabled>⏳ 0</button>
+                            <button class="btn-inventory" id="item-money_washer" onclick="useItem('money_washer')" title="부채 탕감" disabled>🧼 0</button>
+                            <button class="btn-inventory" id="item-future_vision" onclick="useItem('future_vision')" title="미래 예보" disabled>🔮 0</button>
+                            <button class="btn-inventory" id="item-news_manipulator" onclick="useItem('news_manipulator')" title="뉴스 조작" disabled>📢 0</button>
+                            
+                            <button class="btn-inventory btn-sys" onclick="showHallOfFame()" title="명예의 전당" style="font-size: 20px;">🏆</button>
+                            <button class="btn-inventory btn-sys" onclick="manualSave()" title="현재 진행상황 저장" style="font-size: 20px; color: var(--neon-blue);">💾</button>
+                            <button class="btn-inventory btn-sys" id="btn-theme" onclick="toggleTheme()" title="테마 변경" style="font-size: 20px;">☀️</button>
+                            <button class="btn-inventory btn-reset-only" onclick="resetGame()" title="게임 리셋" style="font-size: 20px;">🆕</button>
                         </div>
 
                         <div style="font-size:10px; opacity:0.7; margin: 15px 0 8px 0; text-align:center; letter-spacing: 2px;">📊 STATUS</div>
@@ -191,10 +130,8 @@
                     </div>
                 </div>
 
-                <!-- TOOLS 탭 (지표 전용) -->
                 <div id="pane-tools" class="tab-pane">
                     <div class="trade-section tools-section" style="padding:5px;">
-                        <div style="font-size:10px; opacity:0.7; margin-bottom:5px; text-align:center;">📈 보조 지표 및 차트 설정</div>
                         <div class="tool-grid" style="grid-template-columns: repeat(4, 1fr); gap:4px; margin-bottom:8px;">
                             <button class="btn-ind on" onclick="toggleInd('ma', this)">이평</button>
                             <button class="btn-ind" onclick="toggleInd('bb', this)">볼린</button>
@@ -216,6 +153,142 @@
             </div>
         </div>
     </div>
+
+    <!-- 모든 시스템 오버레이 레이어 통합 관리 -->
+    <div id="stage-intro-msg" class="liquidation-overlay" style="display:none; z-index: 4000;">
+        <div class="liquidation-box neon-border-blue">
+            <h1 id="intro-stage-num" style="color:var(--neon-blue); margin-bottom:5px;">STAGE 1</h1>
+            <h2 id="intro-stage-name" style="font-size:1.2rem; opacity:0.8; margin-bottom:20px;">튜토리얼</h2>
+            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:20px; text-align:left;">
+                <p>🎯 목표 자산: <b id="intro-target" style="color:var(--neon-green)">$100,000</b></p>
+                <p>⏳ 제한 시간: <b id="intro-days" style="color:var(--neon-yellow)">30일</b></p>
+            </div>
+            <button class="btn-tool" onclick="startStage()">투자 시작</button>
+        </div>
+    </div>
+
+    <div id="liquidation-msg" class="liquidation-overlay" style="display:none; z-index: 4100;">
+        <div class="liquidation-box neon-border-red">
+            <h2 style="color:var(--neon-red);">🚨 마진 콜 발생!</h2>
+            <p>유지 증거금 부족으로 모든 포지션이 강제 청산되었습니다.</p>
+            <button class="btn-tool" onclick="showHallOfFame()">명예의 전당</button>
+        </div>
+    </div>
+
+    <div id="gameover-msg" class="liquidation-overlay" style="display:none; z-index: 4200;">
+        <div class="liquidation-box neon-border-pink">
+            <h2 style="color:var(--neon-pink);">GAME OVER</h2>
+            <p id="fail-reason" style="margin:20px 0;"></p>
+            <button class="btn-tool" onclick="showHallOfFame()">명예의 전당</button>
+        </div>
+    </div>
+
+    <div id="gameclear-msg" class="liquidation-overlay" style="display:none; z-index: 4300;">
+        <div class="liquidation-box neon-border-green">
+            <h2>🎉 ALL CLEAR! 🎉</h2>
+            <p id="clear-final-asset" style="margin:20px 0;"></p>
+            <button class="btn-tool" onclick="showHallOfFame()">명예의 전당</button>
+        </div>
+    </div>
+
+    <div id="stageclear-msg" class="liquidation-overlay" style="display:none; z-index: 4400;">
+        <div class="liquidation-box neon-border-green">
+            <h2 style="color:var(--neon-green);">STAGE CLEAR!</h2>
+            <p id="stage-clear-text" style="margin:20px 0;"></p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%;">
+                <button class="btn-tool" onclick="showSkillMenu()" style="border-color:var(--neon-blue); color:var(--neon-blue);">🧬 기술 강화</button>
+                <button class="btn-tool" onclick="showShopMenu()" style="border-color:var(--neon-yellow); color:var(--neon-yellow);">🛒 상점</button>
+            </div>
+            <button class="btn-tool" onclick="closeStageOverlay()" style="margin-top:10px; width:100%;">다음 스테이지로</button>
+        </div>
+    </div>
+
+    <div id="shop-msg" class="liquidation-overlay" style="display:none; z-index: 4500;">
+        <div class="liquidation-box neon-border-yellow" style="max-width:400px;">
+            <h2>🛒 블랙 마켓</h2>
+            <p style="font-size:12px; opacity:0.7; margin-bottom:10px;">잔액: <span id="shop-cash" style="color:var(--neon-green)">$0</span></p>
+            <div class="shop-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%; margin-bottom:20px;">
+                <button class="btn-tool" onclick="buyItem('time_stopper', 50000)">⏳ 정지</button>
+                <button class="btn-tool" onclick="buyItem('money_washer', 100000)">🧼 탕감</button>
+                <button class="btn-tool" onclick="buyItem('future_vision', 30000)">🔮 예보</button>
+                <button class="btn-tool" onclick="buyItem('news_manipulator', 70000)">📢 조작</button>
+            </div>
+            <button class="btn-tool" onclick="closeShopMenu()">나가기</button>
+        </div>
+    </div>
+
+    <div id="skill-msg" class="liquidation-overlay" style="display:none; z-index: 4600;">
+        <div class="liquidation-box neon-border-blue" style="max-width:400px;">
+            <h2>🧬 기술 강화</h2>
+            <p style="font-size:12px; opacity:0.7; margin-bottom:15px;">포인트: <span id="skill-points-val">0</span></p>
+            <div style="display:flex; flex-direction:column; gap:10px; width:100%; margin-bottom:20px;">
+                <button class="btn-tool" onclick="upgradeSkill('insight')">🔍 통찰력 LV <span id="skill-insight-lv">0</span></button>
+                <button class="btn-tool" onclick="upgradeSkill('risk')">🛡️ 위험 관리 LV <span id="skill-risk-lv">0</span></button>
+                <button class="btn-tool" onclick="upgradeSkill('credit')">💳 신용도 LV <span id="skill-credit-lv">0</span></button>
+            </div>
+            <button class="btn-tool" onclick="closeSkillMenu()">확인</button>
+        </div>
+    </div>
+
+    <div id="event-msg" class="liquidation-overlay" style="display:none; z-index: 4700;">
+        <div class="event-box neon-border-pink">
+            <div id="event-icon" style="font-size: 3rem; margin-bottom: 15px;">❓</div>
+            <h2 id="event-title">돌발 상황 발생</h2>
+            <p id="event-desc" style="margin: 20px 0; line-height: 1.6; opacity: 0.9;"></p>
+            <div id="event-options" style="display:flex; flex-direction:column; gap:12px; width:100%;"></div>
+        </div>
+    </div>
+
+    <div id="news-msg" class="liquidation-overlay" style="display:none; z-index: 4800;">
+        <div class="liquidation-box neon-border-blue">
+            <h2 id="news-title" style="color:var(--neon-blue); font-size: 1.5rem;">📰 시장 긴급 속보</h2>
+            <p style="margin: 20px 0; line-height: 1.6; opacity: 0.9;">시장에 새로운 변동성이 감지되었습니다.</p>
+            <button class="btn-tool" onclick="closeNewsOverlay()">확인</button>
+        </div>
+    </div>
+
+    <div id="hall-of-fame-msg" class="liquidation-overlay" style="display:none; z-index: 5000;">
+        <div class="liquidation-box" style="max-width: 500px; width: 95%;">
+            <h2>🏆 명예의 전당</h2>
+            <div id="hof-content" style="width:100%; max-height: 55vh; overflow-y:auto; margin: 20px 0; padding-right: 5px;">
+                <div class="hof-section">
+                    <h3>📊 역대 기록</h3>
+                    <div id="hof-stats" class="hof-grid"></div>
+                </div>
+                <div class="hof-section">
+                    <h3>🌟 달성 업적</h3>
+                    <div id="hof-achievements" class="achievement-grid"></div>
+                </div>
+            </div>
+            <div id="hof-footer-btns" style="display:flex; gap:10px; width:100%;">
+                <button id="hof-close-btn" class="btn-tool" onclick="closeHallOfFame()" style="flex:1; border-color:var(--neon-blue); color:var(--neon-blue); display:none;">이어하기</button>
+                <button id="hof-reset-btn" class="btn-tool" onclick="resetGame()" style="flex:1; border-color:var(--neon-red); color:var(--neon-red); display:none;">다시 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="achievement-toast" class="achievement-toast-container">
+        <div class="achievement-toast-content neon-border-yellow">
+            <div id="ach-toast-icon" class="achievement-toast-icon">🏆</div>
+            <div class="achievement-toast-info">
+                <div class="achievement-toast-label">업적 달성!</div>
+                <div id="ach-toast-name" class="achievement-toast-name"></div>
+                <div id="ach-toast-desc" class="achievement-toast-desc"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="continue-msg" class="liquidation-overlay" style="display:none; z-index: 6000;">
+        <div class="liquidation-box neon-border-blue">
+            <h2 style="color:var(--neon-blue);">💾 데이터 발견</h2>
+            <p id="continue-info" style="margin:20px 0; line-height:1.6; opacity:0.9;"></p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%;">
+                <button class="btn-tool" onclick="confirmContinue(true)" style="border-color:var(--neon-green); color:var(--neon-green);">이어서 하기</button>
+                <button class="btn-tool" onclick="confirmContinue(false)" style="border-color:var(--neon-red); color:var(--neon-red);">새로 시작</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

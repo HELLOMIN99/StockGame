@@ -35,6 +35,7 @@ function toggleTheme() {
     }
     updateAndDraw();
     checkStageClear();
+    saveGame();
 }
 function toggleInd(n, btn) { showInd[n] = !showInd[n]; btn.classList.toggle('on', showInd[n]); updateAndDraw(); }
 function changeTF(tf) { 
@@ -113,9 +114,8 @@ const STAGES = [
     { stage: 20, days: 7000, target: 100000000000000, name: "🕉️ 불멸의 투자의 신" }
 ];
 
-// --- 100가지 랜덤 뉴스 풀 (다양한 테마 및 밸런스 조정 완료) ---
+// --- 100가지 랜덤 뉴스 풀 ---
 const NEWS_POOL = [
-    // --- 거시 경제 (Macro) ---
     { title: "📢 중앙은행 금리 인하 발표! 시장에 돈이 풀린다", effect: "bull", intensity: 2.5, duration: 3 },
     { title: "🚨 인플레이션 쇼크! 금리 인상 공포 확산", effect: "bear", intensity: 2.8, duration: 4 },
     { title: "📉 CPI 지수 예상치 하회, 긴축 종료 기대", effect: "bull", intensity: 2.0, duration: 3 },
@@ -126,8 +126,6 @@ const NEWS_POOL = [
     { title: "🏚️ 부동산 버블 붕괴 조짐, 금융권 부실 비상", effect: "bear", intensity: 3.8, duration: 7 },
     { title: "💵 달러 인덱스 폭등, 신흥국 자금 유출 가속", effect: "bear", intensity: 2.8, duration: 5 },
     { title: "⚡ 에너지 가격 폭등으로 전 세계 인플레 비상", effect: "bear", intensity: 3.5, duration: 4 },
-
-    // --- 반도체 & AI (Tech) ---
     { title: "🚀 AI 반도체 수요 폭발적 증가, 공급 부족", effect: "bull", intensity: 3.8, duration: 5 },
     { title: "🧠 세계 최초 인간형 AI 상용화 성공 소식", effect: "bull", intensity: 4.2, duration: 4 },
     { title: "🛰️ 초미세 공정 한계 돌파, 수율 90% 달성", effect: "bull", intensity: 3.0, duration: 3 },
@@ -138,8 +136,6 @@ const NEWS_POOL = [
     { title: "👓 혁신적 VR/AR 기기 전격 출시", effect: "bull", intensity: 2.5, duration: 4 },
     { title: "🔒 국가급 사이버 보안 공격 방어 성공", effect: "bull", intensity: 1.8, duration: 3 },
     { title: "📉 메모리 가격 폭락, 반도체 업계 위기론", effect: "bear", intensity: 2.5, duration: 5 },
-
-    // --- 바이오 & 헬스케어 (Bio) ---
     { title: "🍀 암 정복 가능한 혁신 신약 임상 3상 통과", effect: "bull", intensity: 4.8, duration: 7 },
     { title: "🧬 유전자 가위 기술로 유전병 치료 성공", effect: "bull", intensity: 3.8, duration: 5 },
     { title: "🦠 신종 변이 바이러스 발견, 전 세계 비상", effect: "bear", intensity: 4.2, duration: 6 },
@@ -150,8 +146,6 @@ const NEWS_POOL = [
     { title: "📉 항암제 가격 강제 인하 정책 발표", effect: "bear", intensity: 2.5, duration: 4 },
     { title: "🚫 복제약 난립으로 수익성 악화 우려", effect: "bear", intensity: 1.8, duration: 3 },
     { title: "🦷 임플란트 신소재 승인 및 수출 호재", effect: "bull", intensity: 2.0, duration: 4 },
-
-    // --- 이차전지 & 친환경 (Energy) ---
     { title: "🔋 전고체 배터리 주행거리 1,200km 달성", effect: "bull", intensity: 4.5, duration: 6 },
     { title: "⚡ 전기차 보조금 전격 확대 결정", effect: "bull", intensity: 2.8, duration: 5 },
     { title: "♻️ 탄소 중립 규제 강화로 친환경주 급등", effect: "bull", intensity: 2.5, duration: 7 },
@@ -162,8 +156,6 @@ const NEWS_POOL = [
     { title: "⚠️ 수소차 상용화 계획 보류 소식", effect: "bear", intensity: 3.0, duration: 5 },
     { title: "🌬️ 대기 오염 규제 강화로 관련 업종 강세", effect: "bull", intensity: 1.5, duration: 3 },
     { title: "🌲 아마존 산림 보호를 위한 대규모 펀드 조성", effect: "bull", intensity: 1.2, duration: 5 },
-
-    // --- 지정학 및 정치 (Geopolitics) ---
     { title: "💣 지정학적 리스크 심화, 전쟁 긴장 고조", effect: "bear", intensity: 5.0, duration: 8 },
     { title: "🤝 적대적 국가 간 극적인 평화 협상 타결", effect: "bull", intensity: 4.8, duration: 7 },
     { title: "🛑 강력한 무역 제재 조치 전격 발표", effect: "bear", intensity: 3.8, duration: 5 },
@@ -174,8 +166,6 @@ const NEWS_POOL = [
     { title: "🚫 해외 공장 자산 몰수 조치 뉴스 발생", effect: "bear", intensity: 4.5, duration: 6 },
     { title: "💬 정치인의 금리 개입 발언으로 시장 요동", effect: "volatile", intensity: 3.5, duration: 2 },
     { title: "📜 법인세 인하 법안 전격 통과", effect: "bull", intensity: 2.0, duration: 4 },
-
-    // --- 기업 & 경영 (Corporate) ---
     { title: "👑 업계 1위 기업 간 대규모 M&A 소식", effect: "bull", intensity: 3.5, duration: 5 },
     { title: "💔 핵심 연구진 집단 이직 소문 확산", effect: "bear", intensity: 3.2, duration: 4 },
     { title: "📉 1분기 실적 '어닝 쇼크' 발표", effect: "bear", intensity: 3.0, duration: 3 },
@@ -186,8 +176,6 @@ const NEWS_POOL = [
     { title: "⚠️ 품질 결함으로 인한 글로벌 대규모 리콜", effect: "bear", intensity: 3.8, duration: 5 },
     { title: "🏢 유명 스타 CEO 영입 소식 발생", effect: "bull", intensity: 2.8, duration: 4 },
     { title: "🌟 브랜드 가치 세계 1위 달성 기념", effect: "bull", intensity: 2.0, duration: 3 },
-
-    // --- 소비 & 서비스 (Service/Consumer) ---
     { title: "🎮 전 세계 열풍인 대작 게임 정식 출시", effect: "bull", intensity: 2.8, duration: 5 },
     { title: "🍿 OTT 서비스 구독자 급증 신기록 달성", effect: "bull", intensity: 2.2, duration: 4 },
     { title: "✈️ 해외여행 수요 팬데믹 이전 수준 추월", effect: "bull", intensity: 2.5, duration: 6 },
@@ -198,8 +186,6 @@ const NEWS_POOL = [
     { title: "💳 개인 연체율 급증으로 소비 위축 우려", effect: "bear", intensity: 3.0, duration: 6 },
     { title: "🎨 K-콘텐츠 글로벌 흥행으로 관련주 강세", effect: "bull", intensity: 2.5, duration: 5 },
     { title: "🛋️ 1인 가구 증가로 소형 가전 판매 폭주", effect: "bull", intensity: 1.5, duration: 4 },
-
-    // --- 우주 & 미래기술 (Future) ---
     { title: "🪐 화성 탐사선 착륙 및 생명체 흔적 발견", effect: "bull", intensity: 4.8, duration: 8 },
     { title: "🛰️ 저궤도 위성 인터넷 전 세계 개통 완료", effect: "bull", intensity: 3.2, duration: 5 },
     { title: "🚀 소행성 광물 채굴 로봇 개발 완료", effect: "bull", intensity: 5.0, duration: 7 },
@@ -210,8 +196,6 @@ const NEWS_POOL = [
     { title: "📉 스타트업 투자 고갈로 기술주 위기설", effect: "bear", intensity: 3.5, duration: 6 },
     { title: "⚠️ 이상 기후로 인한 글로벌 식량 위기", effect: "bear", intensity: 2.8, duration: 5 },
     { title: "🧪 실험실 배양육 시판 허가 획득", effect: "bull", intensity: 1.8, duration: 4 },
-
-    // --- 시장 심리 & 기타 (Sentiment/Etc) ---
     { title: "💬 시장 관망세 지속, 거래량 급감", effect: "calm", intensity: 0.3, duration: 10 },
     { title: "🌋 유명 투자 전문가의 폭락 경보 발령", effect: "bear", intensity: 3.8, duration: 3 },
     { title: "💰 포모(FOMO) 현상 가속, 개인 매수세 폭발", effect: "bull", intensity: 3.5, duration: 4 },
@@ -224,6 +208,276 @@ const NEWS_POOL = [
     { title: "📅 분기 말 수익률 관리 장세 시작", effect: "bull", intensity: 1.5, duration: 2 }
 ];
 
+// --- 랜덤 선택지 이벤트 풀 (Sudden Encounters) ---
+const EVENT_POOL = [
+    {
+        id: 'insider_info',
+        title: "🤫 은밀한 제안",
+        icon: "🕵️",
+        desc: "익명의 정보원이 다가와 다음 뉴스에 대한 정보를 팔겠다고 제안합니다. 가격은 $20,000입니다.",
+        options: [
+            { 
+                text: "정보를 구매한다 (-$20,000)", 
+                action: (s) => {
+                    if (s.money >= 20000) {
+                        s.money -= 20000;
+                        s.skills.insight += 1;
+                        return { msg: "정보가 정확했습니다! 통찰력이 상승하고 시장 흐름을 더 잘 읽게 되었습니다.", success: true };
+                    }
+                    return { msg: "잔액이 부족하여 정보원이 떠나갔습니다.", success: false };
+                }
+            },
+            { text: "거절한다 (아무 일 없음)", action: () => ({ msg: "안전이 최고입니다. 제안을 거절했습니다.", success: true }) }
+        ]
+    },
+    {
+        id: 'crypto_wallet',
+        title: "💾 유실된 지갑",
+        icon: "🗝️",
+        desc: "오래전 잊고 있던 암호화폐 지갑의 복구 키를 찾았습니다! 도박을 해보시겠습니까?",
+        options: [
+            { 
+                text: "지갑을 연다 (확률적 잭팟)", 
+                action: (s) => {
+                    if (Math.random() > 0.5) {
+                        const gain = Math.floor(s.total_asset * 0.2) + 50000;
+                        s.money += gain;
+                        return { msg: `대박! 지갑 안에 $${gain.toLocaleString()} 가치의 코인이 들어있었습니다!`, success: true };
+                    } else {
+                        return { msg: "안타깝게도 지갑은 비어있거나 이미 해킹당한 상태였습니다.", success: false };
+                    }
+                }
+            },
+            { 
+                text: "자선단체에 기부한다 (신용도 상승)", 
+                action: (s) => {
+                    s.skills.credit += 1;
+                    return { msg: "지갑을 기부하여 사회적 평판이 좋아졌습니다! 신용도가 상승합니다.", success: true };
+                }
+            }
+        ]
+    },
+    {
+        id: 'leverage_temptation',
+        title: "🏦 은행의 특별 대출",
+        icon: "💸",
+        desc: "주거래 은행에서 당신의 투자 실력을 인정하여 즉시 대출을 제안합니다. 단, 이자가 높습니다.",
+        options: [
+            { 
+                text: "대출 수락 (현금 +$100,000, 부채 증가)", 
+                action: (s) => {
+                    s.money += 100000;
+                    s.debt += 120000;
+                    return { msg: "공격적인 투자를 위한 자금을 확보했습니다. 하지만 갚아야 할 돈도 늘어났습니다.", success: true };
+                }
+            },
+            { text: "무시한다", action: () => ({ msg: "빚은 지지 않는 것이 상책입니다.", success: true }) }
+        ]
+    },
+    {
+        id: 'black_market_visit',
+        title: "📦 의문의 택배",
+        icon: "🎁",
+        desc: "발신인 불명의 택배가 도착했습니다. 블랙마켓의 냄새가 납니다. 열어보시겠습니까?",
+        options: [
+            { 
+                text: "열어본다 (랜덤 아이템)", 
+                action: (s) => {
+                    const items = Object.keys(s.items);
+                    const randItem = items[Math.floor(Math.random() * items.length)];
+                    s.items[randItem]++;
+                    return { msg: `상자 안에는 [${ITEM_INFO[randItem].name}]이(가) 들어있었습니다!`, success: true };
+                }
+            },
+            { text: "반송한다", action: () => ({ msg: "의심스러운 물건은 멀리하는 것이 좋습니다.", success: true }) }
+        ]
+    }
+];
+
+// --- 업적 데이터 정의 ---
+const ACHIEVEMENTS = [
+    { id: 'first_profit', name: "첫 수익", desc: "매도를 통해 처음으로 수익을 실현하세요.", icon: "💰" },
+    { id: 'stage_5_clear', name: "건물주 등극", desc: "STAGE 5를 클리어하세요.", icon: "🏢" },
+    { id: 'billionaire', name: "억만장자", desc: "총자산 10억 달러를 달성하세요.", icon: "💎" },
+    { id: 'leverage_master', name: "하이 리스크 하이 리턴", desc: "30배 레버리지로 매수하세요.", icon: "🔥" },
+    { id: 'news_victim', name: "뉴스 매니아", desc: "뉴스를 10번 확인하세요.", icon: "📰" },
+    { id: 'skill_max', name: "마스터", desc: "하나의 기술을 만렙(5)까지 올리세요.", icon: "🎓" },
+    { id: 'trader_god', name: "투자의 신", desc: "마지막 스테이지(20)를 클리어하세요.", icon: "🕉️" },
+    { id: 'survival', name: "생존자", desc: "누적 1,000일을 생존하세요.", icon: "⏳" }
+];
+
+// --- 영구 기록 관리 (Hall of Fame) ---
+const HOF_STORAGE_KEY = "ZTI_HALL_OF_FAME";
+const SAVE_DATA_KEY = "ZTI_SAVE_PROGRESS";
+
+function getHOF() {
+    const saved = localStorage.getItem(HOF_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : { bestAsset: 0, totalDays: 0, maxStage: 0, unlockedAchievements: [], playCount: 0 };
+}
+function saveHOF(data) { localStorage.setItem(HOF_STORAGE_KEY, JSON.stringify(data)); }
+
+// --- 진행 상황 저장 및 불러오기 ---
+function saveGame() {
+    if (!gameState || gameState.game_over) return;
+    localStorage.setItem(SAVE_DATA_KEY, JSON.stringify(gameState));
+}
+
+// 페이지 이탈 방지 및 자동 저장
+window.addEventListener('beforeunload', (event) => {
+    if (gameState && !gameState.game_over) {
+        saveGame(); // 나가는 순간 마지막으로 한 번 더 저장
+        event.preventDefault();
+        event.returnValue = ''; // 브라우저 기본 경고창 활성화
+    }
+});
+
+function manualSave() {
+    if (!gameState || gameState.game_over) {
+        alert("게임 진행 중일 때만 저장 가능합니다.");
+        return;
+    }
+    saveGame();
+    showFloatingText("💾 데이터가 저장되었습니다!", true);
+}
+
+function loadGame() {
+    const saved = localStorage.getItem(SAVE_DATA_KEY);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (parsed && !parsed.game_over) return parsed;
+        } catch (e) { console.error("Save data error", e); }
+    }
+    return null;
+}
+
+function clearSave() {
+    localStorage.removeItem(SAVE_DATA_KEY);
+}
+
+function checkAchievement(id) {
+    let hof = getHOF();
+    if (!hof.unlockedAchievements.includes(id)) {
+        hof.unlockedAchievements.push(id);
+        saveHOF(hof);
+        const ach = ACHIEVEMENTS.find(a => a.id === id);
+        showAchievementToast(ach);
+    }
+}
+
+// --- 업적 알림 토스트 실행 ---
+function showAchievementToast(ach) {
+    const toast = document.getElementById('achievement-toast');
+    document.getElementById('ach-toast-icon').innerText = ach.icon;
+    document.getElementById('ach-toast-name').innerText = ach.name;
+    document.getElementById('ach-toast-desc').innerText = ach.desc;
+
+    toast.classList.add('show');
+    
+    // 효과음 대신 시각적 강조를 위해 잠시 지연 후 제거
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 4000);
+}
+
+// --- 랜덤 이벤트 실행 엔진 ---
+function triggerRandomEvent() {
+    const ev = EVENT_POOL[Math.floor(Math.random() * EVENT_POOL.length)];
+    document.getElementById('event-icon').innerText = ev.icon;
+    document.getElementById('event-title').innerText = ev.title;
+    document.getElementById('event-desc').innerText = ev.desc;
+    
+    const container = document.getElementById('event-options');
+    container.innerHTML = '';
+    ev.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-event-option';
+        btn.innerHTML = `<span class="option-icon">➔</span> ${opt.text}`;
+        btn.onclick = () => {
+            const res = opt.action(gameState);
+            alert(res.msg);
+            document.getElementById('event-msg').style.display = 'none';
+            updateUI(gameState);
+        };
+        container.appendChild(btn);
+    });
+    document.getElementById('event-msg').style.display = 'flex';
+}
+
+// --- 명예의 전당 UI 렌더링 ---
+function showHallOfFame() {
+    const hof = getHOF();
+    // 기록 업데이트 (게임 진행 중일 때만 임시 업데이트)
+    if (gameState) {
+        hof.bestAsset = Math.max(hof.bestAsset, gameState.total_asset);
+        hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx);
+    }
+
+    // 다른 모든 오버레이 숨기기
+    document.querySelectorAll('.liquidation-overlay').forEach(el => el.style.display = 'none');
+    document.getElementById('hall-of-fame-msg').style.display = 'flex';
+
+    // 버튼 상태 제어: 게임이 끝난 상태(청산, 기간만료 등)면 '다시 시작'만, 진행 중이면 '이어하기'만 표시
+    const isGameOver = !gameState || gameState.game_over === true;
+    
+    const closeBtn = document.getElementById('hof-close-btn');
+    const resetBtn = document.getElementById('hof-reset-btn');
+
+    if (closeBtn && resetBtn) {
+        closeBtn.style.display = isGameOver ? 'none' : 'block';
+        resetBtn.style.display = isGameOver ? 'block' : 'none';
+    }
+
+    // 스탯 렌더링
+    document.getElementById('hof-stats').innerHTML = `
+        <div class="hof-stat-card"><div class="hof-stat-label">최고 자산</div><div class="hof-stat-value">$${Math.floor(hof.bestAsset).toLocaleString()}</div></div>
+        <div class="hof-stat-card"><div class="hof-stat-label">최고 스테이지</div><div class="hof-stat-value">STAGE ${hof.maxStage}</div></div>
+        <div class="hof-stat-card"><div class="hof-stat-label">누적 투자일</div><div class="hof-stat-value">${hof.totalDays}일</div></div>
+        <div class="hof-stat-card"><div class="hof-stat-label">플레이 횟수</div><div class="hof-stat-value">${hof.playCount}회</div></div>
+    `;
+
+    // 업적 렌더링
+    const unlockedCount = hof.unlockedAchievements.length;
+    const totalCount = ACHIEVEMENTS.length;
+    
+    // 섹션 제목에 달성도 추가
+    const achHeader = document.querySelector('.hof-section h3:nth-of-type(1)'); 
+    // 실제로는 innerHTML로 그리드를 그리므로 매번 새로 그리는 방식 유지
+    
+    document.getElementById('hof-achievements').innerHTML = ACHIEVEMENTS.map(ach => {
+        const isUnlocked = hof.unlockedAchievements.includes(ach.id);
+        if (isUnlocked) {
+            return `
+                <div class="achievement-card unlocked">
+                    <div class="achievement-icon" style="font-size:24px; margin-bottom:5px;">${ach.icon}</div>
+                    <div class="achievement-name" style="font-size:12px; font-weight:800; margin-bottom:2px;">${ach.name}</div>
+                    <div class="achievement-desc" style="font-size:10px; opacity:0.7; line-height:1.2;">${ach.desc}</div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="achievement-card locked">
+                    <div class="achievement-icon" style="font-size:24px; margin-bottom:5px;">🔒</div>
+                    <div class="achievement-name" style="font-size:12px; font-weight:800; margin-bottom:2px;">???</div>
+                    <div class="achievement-desc" style="font-size:10px; opacity:0.5; line-height:1.2;">달성 시 공개됩니다</div>
+                </div>
+            `;
+        }
+    }).join('');
+
+    // 업적 섹션 제목 업데이트 (DOM 직접 조작이 어려울 수 있으니 상단에 추가 정보 렌더링)
+    const statsContainer = document.getElementById('hof-stats');
+    statsContainer.innerHTML += `
+        <div class="hof-stat-card" style="grid-column: span 2; border-color: var(--neon-yellow);">
+            <div class="hof-stat-label">업적 수집도</div>
+            <div class="hof-stat-value" style="color: var(--neon-yellow);">${unlockedCount} / ${totalCount} (${Math.floor(unlockedCount/totalCount*100)}%)</div>
+        </div>
+    `;
+}
+
+function closeHallOfFame() {
+    document.getElementById('hall-of-fame-msg').style.display = 'none';
+}
 
 // --- 유틸리티 및 엔진 ---
 function animateValue(id, end) {
@@ -263,7 +517,7 @@ function generateInitialState() {
         current_stage_idx: 0, game_over: false, news_history: [], skill_points: 0, 
         skills: { insight: 0, risk: 0, credit: 0 },
         items: { time_stopper: 0, money_washer: 0, future_vision: 0, news_manipulator: 0 },
-        time_stopper_days: 0, active_news: null, news_remaining: 0
+        time_stopper_days: 0, active_news: null, news_remaining: 0, news_count: 0
     };
     
     // 1. 딱 시작했을 때의 현재가 결정 ($800 ~ $1200)
@@ -290,11 +544,13 @@ function nextDay(days) {
     if (!gameState || gameState.game_over) return;
     for (let d = 0; d < days; d++) {
         gameState.day++;
+        if (gameState.day >= 1000) checkAchievement('survival');
 
         // 스테이지 제한 시간 체크
         let stage = STAGES[gameState.current_stage_idx];
         if (gameState.day > stage.days) {
             gameState.game_over = true;
+            clearSave(); // 종결된 게임이므로 저장 데이터 삭제
             document.getElementById('fail-reason').innerText = `제한 시간(${stage.days}일)이 초과되었습니다. 목표 금액($${stage.target.toLocaleString()}) 달성 실패!`;
             document.getElementById('gameover-msg').style.display = 'flex';
             break;
@@ -309,9 +565,19 @@ function nextDay(days) {
         let interestRate = 0.001 * (1 - (gameState.skills.risk * 0.1));
         let totalDebt = gameState.debt + gameState.inv_debt;
         if (totalDebt > 0) gameState.money -= (totalDebt * interestRate);
+        
+        // 돌발 이벤트 발생 체크 (약 2% 확률)
+        if (days === 1 && Math.random() < 0.02) {
+            triggerRandomEvent();
+            updateAndDraw();
+            return; // 이벤트 팝업이 뜨면 그날의 진행은 일단 정지
+        }
+
         if (!gameState.active_news && Math.random() < (0.05 + gameState.skills.insight * 0.02)) {
             let n = NEWS_POOL[Math.floor(Math.random() * NEWS_POOL.length)];
             gameState.active_news = n; gameState.news_remaining = n.duration;
+            gameState.news_count++;
+            if (gameState.news_count >= 10) checkAchievement('news_victim');
             gameState.news_history.push({ day: gameState.day, title: n.title });
             document.getElementById('news-title').innerText = n.title;
             document.getElementById('news-msg').style.display = 'flex';
@@ -346,20 +612,39 @@ function nextDay(days) {
         // 청산 조건: 유지 증거금 10% (복구)
         let marginLimit = 0.1 * (1 - (gameState.skills.risk * 0.1));
         if (totalDebt > 0 && gameState.total_asset < totalDebt * marginLimit) {
+            gameState.game_over = true;
+            clearSave();
             gameState.shares = 0; gameState.inv_shares = 0; gameState.debt = 0; gameState.inv_debt = 0;
             document.getElementById('liquidation-msg').style.display = 'flex'; break;
         }
-        if (gameState.total_asset <= 0) { gameState.game_over = true; document.getElementById('gameover-msg').style.display = 'flex'; break; }
+        if (gameState.total_asset <= 0) { 
+            gameState.game_over = true; 
+            clearSave(); 
+            document.getElementById('gameover-msg').style.display = 'flex'; 
+            break; 
+        }
         checkStageClear();
     }
     updateAndDraw();
     checkStageClear();
+    saveGame();
 }
 
 function checkStageClear() {
     let stage = STAGES[gameState.current_stage_idx];
+    if (gameState.total_asset >= 1000000000) checkAchievement('billionaire');
+    
     if (gameState.money >= stage.target) {
         gameState.current_stage_idx++; gameState.skill_points++;
+        if (gameState.current_stage_idx === 5) checkAchievement('stage_5_clear');
+        if (gameState.current_stage_idx >= STAGES.length) {
+            checkAchievement('trader_god');
+            gameState.game_over = true;
+            clearSave(); // 올 클리어했으므로 저장 데이터 삭제
+            document.getElementById('clear-final-asset').innerText = `최종 자산: $${Math.floor(gameState.total_asset).toLocaleString()}`;
+            document.getElementById('gameclear-msg').style.display = 'flex';
+            return;
+        }
         let bonus = 10000 + (gameState.skills.credit * 10000);
         gameState.money += bonus;
         document.getElementById('stage-clear-text').innerText = `STAGE ${gameState.current_stage_idx} 클리어!\n보너스 $${bonus.toLocaleString()} 획득!`;
@@ -433,10 +718,12 @@ function trade(act) {
             gameState.money -= req; gameState.debt += (cost - (cost/selectedLev));
             gameState.avg_price = (gameState.shares * gameState.avg_price + cost) / (gameState.shares + amt);
             gameState.shares += amt;
+            if (selectedLev >= 30) checkAchievement('leverage_master');
         }
     } else if (act === 'sell' && gameState.shares > 0) {
         let sAmt = Math.min(amt, gameState.shares), val = p * sAmt, fee = val * feeRate;
         let profit = (p - gameState.avg_price) * sAmt - fee;
+        if (profit > 0) checkAchievement('first_profit');
         let repay = gameState.debt * (sAmt / gameState.shares);
         gameState.money += (val - repay - fee); gameState.debt -= repay; gameState.shares -= sAmt;
         showFloatingText((profit >= 0 ? '+' : '') + '$' + Math.floor(profit).toLocaleString(), profit >= 0);
@@ -459,6 +746,7 @@ function trade(act) {
     }
     updateAndDraw();
     checkStageClear();
+    saveGame();
 }
 
 const ITEM_INFO = {
@@ -491,6 +779,7 @@ function upgradeSkill(type) {
         }
         gameState.skill_points--;
         gameState.skills[type]++;
+        if (gameState.skills[type] === 5) checkAchievement('skill_max');
         updateUI(gameState);
         // 신용도 5레벨 달성 시 50x 레버리지 버튼 처리
         if (type === 'credit' && gameState.skills.credit >= 5) {
@@ -925,6 +1214,7 @@ function startStage() {
     document.getElementById('stage-intro-msg').style.display = 'none';
     updateAndDraw();
     checkStageClear();
+    saveGame();
 }
 
 function closeStageOverlay() { 
@@ -936,24 +1226,35 @@ function closeStageOverlay() {
     document.getElementById('stageclear-msg').style.display = 'none'; 
     showStageIntro(); // 다음 스테이지 이름과 목표를 보여줌
 }
-function resetGame() { location.reload(); }
+function resetGame() { 
+    if (confirm("정말 처음부터 다시 시작하시겠습니까?\n모든 현재 진행 상황이 삭제됩니다.")) {
+        clearSave(); 
+        location.reload(); 
+    }
+}
 
 window.onload = () => { 
-    gameState = generateInitialState(); 
-    updateUI(gameState); 
-    showStageIntro(); // 시작 시 인트로 표시
+    const savedData = loadGame();
+    if (savedData) {
+        const stage = STAGES[savedData.current_stage_idx];
+        document.getElementById('continue-info').innerHTML = `
+            마지막 플레이 기록이 있습니다.<br>
+            <span style="color:var(--neon-yellow);">[STAGE ${stage.stage} - ${stage.name}]</span><br>
+            <span style="color:var(--neon-green);">자산: $${Math.floor(savedData.total_asset).toLocaleString()}</span><br><br>
+            이 기록을 불러오시겠습니까?
+        `;
+        document.getElementById('continue-msg').style.display = 'flex';
+    } else {
+        startNewGame();
+    }
 
-    // 차트 이벤트 리스너 등록 (한 번만)
+    // 차트 이벤트 리스너 등록
     const chartEl = document.getElementById('chart');
     if (chartEl) {
         chartEl.on('plotly_relayout', e => { 
-            // X축 범위 저장
             if (e['xaxis.range[0]'] !== undefined) {
                 currentRange = [e['xaxis.range[0]'], e['xaxis.range[1]']]; 
             }
-            
-            // 사용자가 선을 그리거나 수정했을 때 실시간 동기화
-            // Plotly 내부 레이아웃에서 선들을 가져와 가이드 선(dot, dash)을 제외하고 저장
             if (chartEl.layout && chartEl.layout.shapes) {
                 userShapes = chartEl.layout.shapes.filter(s => 
                     s.line && s.line.dash !== 'dot' && s.line.dash !== 'dash'
@@ -962,3 +1263,21 @@ window.onload = () => {
         });
     }
 };
+
+function confirmContinue(isContinue) {
+    document.getElementById('continue-msg').style.display = 'none';
+    if (isContinue) {
+        gameState = loadGame();
+        updateUI(gameState);
+        updateAndDraw();
+    } else {
+        startNewGame();
+    }
+}
+
+function startNewGame() {
+    clearSave();
+    gameState = generateInitialState(); 
+    updateUI(gameState); 
+    showStageIntro(); 
+}
