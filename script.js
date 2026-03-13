@@ -49,8 +49,16 @@ function setLev(v, btn) { selectedLev = v; document.querySelectorAll('.lev-btn')
 function setDragMode(m) { 
     currentDragMode = m; 
     let config = { dragmode: m };
+    
+    // 버튼 활성화 상태 업데이트
+    const panBtn = document.getElementById('btn-drag-pan');
+    const drawBtn = document.getElementById('btn-drag-draw');
+    if (panBtn && drawBtn) {
+        panBtn.classList.toggle('active', m === 'pan');
+        drawBtn.classList.toggle('active', m === 'drawline');
+    }
+
     if (m === 'drawline') {
-        // 다크모드: 형광늘색, 라이트모드: 진한 파란색
         config.newshape = { line: { color: currentTheme === 'dark' ? '#00f2ff' : '#0040ff', width: 2 } };
     }
     Plotly.relayout('chart', config); 
@@ -312,9 +320,36 @@ const SAVE_DATA_KEY = "ZTI_SAVE_PROGRESS";
 
 function getHOF() {
     const saved = localStorage.getItem(HOF_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : { bestAsset: 0, totalDays: 0, maxStage: 0, unlockedAchievements: [], playCount: 0 };
+    const defaultHOF = { bestAsset: 0, totalDays: 0, maxStage: 0, unlockedAchievements: [], playCount: 0 };
+    if (!saved) return defaultHOF;
+    try {
+        return { ...defaultHOF, ...JSON.parse(saved) };
+    } catch (e) { return defaultHOF; }
 }
 function saveHOF(data) { localStorage.setItem(HOF_STORAGE_KEY, JSON.stringify(data)); }
+
+// 실시간 최고 기록 및 업적 체크
+function updateHOFRecords() {
+    if (!gameState) return;
+    let hof = getHOF();
+    let changed = false;
+
+    if (gameState.total_asset > hof.bestAsset) { hof.bestAsset = gameState.total_asset; changed = true; }
+    if (gameState.current_stage_idx > hof.maxStage) { hof.maxStage = gameState.current_stage_idx; changed = true; }
+    
+    if (changed) saveHOF(hof);
+}
+
+// 게임 종료 시 누적 통계 저장 (중복 합산 방지)
+function finalizeHOFStats() {
+    if (!gameState) return;
+    let hof = getHOF();
+    hof.totalDays += gameState.day;
+    // 최고 기록 마지막 확인
+    hof.bestAsset = Math.max(hof.bestAsset, gameState.total_asset);
+    hof.maxStage = Math.max(hof.maxStage, gameState.current_stage_idx);
+    saveHOF(hof);
+}
 
 // --- 진행 상황 저장 및 불러오기 ---
 function saveGame() {
@@ -550,6 +585,7 @@ function nextDay(days) {
         let stage = STAGES[gameState.current_stage_idx];
         if (gameState.day > stage.days) {
             gameState.game_over = true;
+            finalizeHOFStats(); // 누적 통계 저장
             clearSave();
             document.getElementById('fail-reason').innerText = `제한 시간(${stage.days}일)이 초과되었습니다. 목표 금액($${stage.target.toLocaleString()}) 달성 실패!`;
             document.getElementById('gameover-msg').style.display = 'flex';
@@ -1239,17 +1275,14 @@ function resetGame() {
 window.onload = () => { 
     const savedData = loadGame();
     if (savedData) {
-        const stage = STAGES[savedData.current_stage_idx];
-        document.getElementById('continue-info').innerHTML = `
-            마지막 플레이 기록이 있습니다.<br>
-            <span style="color:var(--neon-yellow);">[STAGE ${stage.stage} - ${stage.name}]</span><br>
-            <span style="color:var(--neon-green);">자산: $${Math.floor(savedData.total_asset).toLocaleString()}</span><br><br>
-            이 기록을 불러오시겠습니까?
-        `;
+        // ... (중략) ...
         document.getElementById('continue-msg').style.display = 'flex';
     } else {
         startNewGame();
     }
+
+    // 초기 모드를 '이동'으로 설정
+    setDragMode('pan');
 
     // 차트 이벤트 리스너 등록
     const chartEl = document.getElementById('chart');

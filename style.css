@@ -358,9 +358,21 @@ h1 {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
+/* 팝업 박스 내의 버튼들만 중앙 정렬 및 최소 너비 적용 */
+.liquidation-box .btn-tool, 
+.intro-box .btn-tool, 
+.event-box .btn-tool,
+.liquidation-box .btn-event-option {
+    min-width: 140px;
+    margin: 8px auto;
+    justify-content: center;
+}
+
+/* 일반 버튼 스타일 (차트 툴바 등에서 사용) */
 .btn-tool {
-    min-width: 120px;
-    margin: 5px auto;
+    padding: 8px;
+    width: 100%;
+    font-size: 12px;
 }
 
 /* 이벤트 버튼 중앙 정렬 */
@@ -370,12 +382,6 @@ h1 {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-}
-.btn-event-option {
-    width: 100%;
-    max-width: 350px;
-    justify-content: center; /* 텍스트와 아이콘 모두 중앙으로 */
-    text-align: center;
 }
 
 @keyframes boxScaleUp {

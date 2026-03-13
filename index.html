@@ -143,8 +143,8 @@
                             <button class="btn-ind" onclick="toggleInd('adx', this)">ADX</button>
                         </div>
                         <div class="tool-grid" style="grid-template-columns: repeat(4, 1fr); gap:4px;">
-                            <button class="btn-tool" onclick="setDragMode('pan')">🖐️이동</button>
-                            <button class="btn-tool" onclick="setDragMode('drawline')">✏️선</button>
+                            <button id="btn-drag-pan" class="btn-tool active" onclick="setDragMode('pan')">🖐️이동</button>
+                            <button id="btn-drag-draw" class="btn-tool" onclick="setDragMode('drawline')">✏️선</button>
                             <button class="btn-tool" onclick="undoLastShape()">↩️취소</button>
                             <button class="btn-tool" onclick="clearShapes()" style="color:var(--neon-red);">🧹삭제</button>
                         </div>
